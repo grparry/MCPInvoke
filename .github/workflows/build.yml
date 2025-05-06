@@ -1,0 +1,39 @@
+name: MCPInvoke CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET SDKs
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: |
+          6.0.x
+          7.0.x
+          8.0.x
+          9.0.x
+    
+    - name: Restore MCPInvoke dependencies
+      run: dotnet restore MCPInvoke/MCPInvoke.csproj
+    
+    - name: Restore SampleHost dependencies
+      run: dotnet restore SampleHost/SampleHost.csproj
+
+    - name: Build MCPInvoke
+      run: dotnet build MCPInvoke/MCPInvoke.csproj --no-restore --configuration Release
+    
+    - name: Build SampleHost
+      run: dotnet build SampleHost/SampleHost.csproj --no-restore --configuration Release
+    
+    # - name: Test
+    #   run: dotnet test <path-to-your-test-project.csproj> --no-build --configuration Release --verbosity normal

@@ -1,0 +1,46 @@
+name: Publish MCPInvoke to NuGet
+
+on:
+  push:
+    tags:
+      - 'v*.*.*' # Triggers on tags like v0.1.0, v1.2.3
+
+jobs:
+  publish: # Renamed job for clarity
+    name: Build, Pack & Publish MCPInvoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Required to checkout the repo
+      packages: write # Required to publish to nuget.org
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDKs
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: | # Installs all specified SDK versions
+          6.0.x
+          7.0.x
+          8.0.x
+          9.0.x
+
+    - name: Restore MCPInvoke dependencies
+      run: dotnet restore MCPInvoke/MCPInvoke.csproj
+
+    - name: Build MCPInvoke
+      run: dotnet build MCPInvoke/MCPInvoke.csproj --configuration Release --no-restore
+
+    # If you have tests specifically for MCPInvoke library, add a step here.
+    # For example, if MCPInvoke.Tests.csproj exists in an MCPInvoke.Tests folder:
+    # - name: Test MCPInvoke
+    #   run: dotnet test MCPInvoke.Tests/MCPInvoke.Tests.csproj --no-build --configuration Release --verbosity normal
+
+    - name: Pack MCPInvoke
+      # This packs the MCPInvoke project. Output directory is nupkgs at the repo root.
+      run: dotnet pack MCPInvoke/MCPInvoke.csproj --no-build --configuration Release --output ./nupkgs
+
+    - name: Push MCPInvoke to NuGet.org
+      run: dotnet nuget push "./nupkgs/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+      # 'if: success()' is the default, so not strictly needed here.
