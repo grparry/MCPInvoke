@@ -39,7 +39,7 @@ app.MapMcpInvoke("/mcpinvoke");
 
 ### ASP.NET Core Controller Integration
 
-Version 1.0.1 adds automatic ASP.NET Core controller integration:
+Version 1.0.2 adds automatic ASP.NET Core controller integration:
 
 ```csharp
 // In Program.cs or Startup.cs

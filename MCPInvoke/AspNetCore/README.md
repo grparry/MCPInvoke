@@ -16,7 +16,7 @@ The ASP.NET Core Controller integration simplifies the process of exposing your 
 
 ## Installation
 
-This feature is included in MCPInvoke version 1.0.1 and later.
+This feature is included in MCPInvoke version 1.0.2 and later.
 
 ```bash
 dotnet add package MCPInvoke
