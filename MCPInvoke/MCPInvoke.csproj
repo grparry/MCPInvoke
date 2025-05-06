@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>0.1.0</Version> <!-- Initial version for MCPInvoke -->
+    <Version>1.0.0</Version> <!-- Initial version for MCPInvoke -->
     <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
     <Company>MCPInvoke</Company> <!-- Or your name/org -->
     <Description>MCPInvoke is a lightweight .NET library that provides an execution endpoint for Model Context Protocol (MCP) tools. It works in conjunction with MCPBuckle (for discovery) to enable AI agent interaction with your ASP.NET Core APIs.</Description>
