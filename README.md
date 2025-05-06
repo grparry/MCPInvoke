@@ -15,4 +15,47 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 
 ## Getting Started
 
-*Documentation coming soon*
+### Installation
+
+```bash
+dotnet add package MCPInvoke
+```
+
+### Basic Setup
+
+```csharp
+// In Program.cs or Startup.cs
+using MCPInvoke.Extensions;
+
+// Register MCPInvoke services
+builder.Services.AddMcpInvoke();
+
+// Register an implementation of IMcpToolDefinitionProvider
+// See below for ASP.NET Core controller integration
+
+// Register endpoint
+app.MapMcpInvoke("/mcpinvoke");
+```
+
+### ASP.NET Core Controller Integration
+
+Version 1.0.1 adds automatic ASP.NET Core controller integration:
+
+```csharp
+// In Program.cs or Startup.cs
+using MCPInvoke.AspNetCore.Extensions;
+
+// Register MCPInvoke with ASP.NET Core controller integration
+builder.Services.AddMcpInvokeWithControllers(options => {
+    // Include controller name in tool name
+    options.IncludeControllerNameInToolName = true;
+    
+    // Optionally exclude specific controllers
+    // options.ExcludedControllers.Add("Health");
+});
+
+// Map the MCP Invoke endpoint
+app.MapMcpInvoke("/mcpinvoke");
+```
+
+For more detailed information on ASP.NET Core integration, see the [AspNetCore README](MCPInvoke/AspNetCore/README.md).
