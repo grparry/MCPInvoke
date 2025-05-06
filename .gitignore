@@ -1,0 +1,67 @@
+# Standard .NET .gitignore file
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+bin/
+obj/
+log/
+
+# Visual Studio cache files
+.vs/
+*.VC.db
+*.VC.VC.opendb
+
+# Rider cache files
+.idea/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.* 
+*.VisualState.xml
+TestResult.xml
+
+# Output files
+*.DS_Store
+*.DotSettings.user
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+*.symbols.nupkg
+packages/
+!packages/repositories.config
+
+# Other
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and sensitive data
+*.env
+secrets.json
+appsettings.*.json
+!appsettings.Development.json
+!appsettings.json
+
+# Tooling
+.DS_Store
+.toolstarget
+
+# Specific to this project (if any)
+# For example, if you have specific local config files not covered above

@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net6.0;net7.0;net8.0;net9.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Version>0.1.0</Version> <!-- Initial version for MCPInvoke -->
+    <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
+    <Company>MCPInvoke</Company> <!-- Or your name/org -->
+    <Description>MCPInvoke is a lightweight .NET library that provides an execution endpoint for Model Context Protocol (MCP) tools. It works in conjunction with MCPBuckle (for discovery) to enable AI agent interaction with your ASP.NET Core APIs.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>mcp;execution;invoke;json-rpc;aspnetcore;ai;agent</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile> <!-- Will need to add this to the nuget package later -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- MCPBuckle provides the tool definitions that MCPInvoke will execute. -->
+    <PackageReference Include="MCPBuckle" Version="1.3.0" />
+  </ItemGroup>
+
+  <!-- If README.md is in the project root, not a subfolder -->
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <!-- MCPBuckle ProjectReference removed for NuGet packaging -->
+
+</Project>
