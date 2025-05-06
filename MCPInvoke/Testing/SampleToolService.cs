@@ -14,7 +14,10 @@ public class SampleToolService : ControllerBase
 {
     private readonly IConfiguration? _configuration; // For GetConfigurationValue
 
-    // Constructor for dependency injection, if needed (e.g., for IConfiguration)
+    /// <summary>
+    /// Initializes a new instance of the <see cref="SampleToolService"/> class.
+    /// </summary>
+    /// <param name="configuration">Optional configuration to use for the service.</param>
     public SampleToolService(IConfiguration? configuration = null)
     {
         _configuration = configuration;
