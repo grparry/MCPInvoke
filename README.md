@@ -13,6 +13,13 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.1.0
+
+- **MCPBuckle 1.4.0 Integration** - Updated to use the MCPBuckle 1.4.0 NuGet package for better MCP specification compliance
+- **Special JSON-RPC Method Handling** - Added support for standard JSON-RPC methods:
+  - `notifications/initialized` - Properly acknowledges initialization notifications from MCP clients
+  - `tools/list` - Returns a helpful error message directing clients to use the MCP context endpoint instead
+
 ## Getting Started
 
 ### Installation
@@ -39,7 +46,7 @@ app.MapMcpInvoke("/mcpinvoke");
 
 ### ASP.NET Core Controller Integration
 
-Version 1.0.2 adds automatic ASP.NET Core controller integration:
+MCPInvoke provides automatic ASP.NET Core controller integration:
 
 ```csharp
 // In Program.cs or Startup.cs

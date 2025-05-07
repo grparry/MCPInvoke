@@ -1,9 +1,12 @@
 using MCPInvoke.Services;
+using MCPInvoke.Models;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using System.Text;
+using System.Text.Json;
+using System;
 
 namespace MCPInvoke.Extensions;
 
@@ -47,6 +50,49 @@ public static class McpInvokeExtensions
                 requestBody = await reader.ReadToEndAsync();
             }
 
+            // Parse the request to check for special JSON-RPC methods
+            try
+            {
+                using var requestJson = JsonDocument.Parse(requestBody);
+                var root = requestJson.RootElement;
+
+                // Check if it's a valid JSON-RPC request
+                if (root.TryGetProperty("jsonrpc", out var jsonrpcVersion) &&
+                    jsonrpcVersion.GetString() == "2.0" &&
+                    root.TryGetProperty("method", out var methodElement))
+                {
+                    string method = methodElement.GetString() ?? string.Empty;
+                    JsonElement? id = null;
+                    if (root.TryGetProperty("id", out var idElement))
+                    {
+                        id = idElement.Clone();
+                    }
+
+                    // Handle special JSON-RPC methods
+                    if (method == "notifications/initialized")
+                    {
+                        // Acknowledge the initialization notification
+                        var response = new JsonRpcResponse(id, result: new { success = true });
+                        var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        return Results.Text(responseJson, contentType: "application/json-rpc+json; charset=utf-8");
+                    }
+
+                    // For the tools/list method, let the MCPBuckle handle it
+                    if (method == "tools/list")
+                    {
+                        var error = new JsonRpcError { Code = -32601, Message = $"Method '{method}' not supported at this endpoint. Use the MCP context endpoint instead." };
+                        var response = new JsonRpcResponse(id, error: error);
+                        var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        return Results.Text(responseJson, contentType: "application/json-rpc+json; charset=utf-8");
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // If JSON parsing fails, continue to standard processing
+            }
+
+            // Standard processing for tool execution
             var responseBody = await mcpService.ProcessRequestAsync(requestBody);
             
             // Use Results.Text for proper IResult handling compatible with RouteHandlerBuilder

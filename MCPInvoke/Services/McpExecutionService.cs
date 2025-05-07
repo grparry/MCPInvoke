@@ -146,6 +146,9 @@ public class McpExecutionService
     {
         JsonRpcRequest? request = null;
         JsonElement? responseId = null; // Use this for constructing JsonRpcResponse
+        JsonElement paramsElement = default; // To handle both standard and MCP formats
+        bool hasParamsElement = false; // Track if we have valid parameters
+        string toolName = string.Empty; // The actual tool name to execute
 
         try
         {
@@ -173,11 +176,63 @@ public class McpExecutionService
                 _ => null 
             };
 
-            _logger.LogInformation("Processing request for method: {MethodName}, ID: {RequestId}", request.Method, loggingRequestId);
-
-            if (!_toolRegistry.TryGetValue(request.Method, out RegisteredTool? registeredTool) || registeredTool == null)
+            // Handle MCP-style requests (method = "tools/call")
+            if (request.Method == "tools/call")
             {
-                var error = new JsonRpcError { Code = -32601, Message = "Method not found" };
+                _logger.LogInformation("Processing MCP-compliant request with method: tools/call, ID: {RequestId}", loggingRequestId);
+                
+                // Extract the tool name from params.name
+                if (request.Params == null)
+                {
+                    var error = new JsonRpcError { Code = -32602, Message = "Invalid params: Missing params in MCP request" };
+                    return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
+                }
+                
+                if (!request.Params.Value.TryGetProperty("name", out var nameElement) ||
+                    nameElement.ValueKind != JsonValueKind.String)
+                {
+                    var error = new JsonRpcError { Code = -32602, Message = "Invalid params: Missing or invalid 'name' property in MCP request" };
+                    return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
+                }
+                
+                toolName = nameElement.GetString() ?? string.Empty;
+                
+                // Extract the arguments from params.arguments
+                if (request.Params.Value.TryGetProperty("arguments", out var argumentsElement) &&
+                    argumentsElement.ValueKind == JsonValueKind.Object)
+                {
+                    paramsElement = argumentsElement.Clone();
+                    hasParamsElement = true;
+                }
+                else
+                {
+                    // If no arguments property or not an object, use an empty object
+                    paramsElement = JsonDocument.Parse("{}").RootElement.Clone();
+                    hasParamsElement = true;
+                }
+            }
+            else
+            {
+                // Legacy format - method is the tool name, params are direct
+                _logger.LogInformation("Processing legacy JSON-RPC request for method: {MethodName}, ID: {RequestId}", request.Method, loggingRequestId);
+                toolName = request.Method;
+                
+                if (request.Params != null)
+                {
+                    paramsElement = request.Params.Value.Clone();
+                    hasParamsElement = true;
+                }
+                else
+                {
+                    hasParamsElement = false;
+                }
+            }
+
+            _logger.LogInformation("Tool to execute: {ToolName}", toolName);
+
+            if (!_toolRegistry.TryGetValue(toolName, out RegisteredTool? registeredTool) || registeredTool == null)
+            {
+                var error = new JsonRpcError { Code = -32601, Message = $"Method '{toolName}' not found" };
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
             }
 
@@ -185,9 +240,9 @@ public class McpExecutionService
             object?[] callParameters = new object[methodParameters.Length];
 
             _logger.LogInformation("  Attempting to bind parameters for {MethodName}. C# method expects {ParamCount} parameters.", 
-                                 request.Method, methodParameters.Length);
+                                 toolName, methodParameters.Length);
             _logger.LogInformation("  Registered schema keys for {MethodName} at call time: {Keys}", 
-                                 request.Method, string.Join(", ", registeredTool.InputParameters.Keys));
+                                 toolName, string.Join(", ", registeredTool.InputParameters.Keys));
 
             for (int i = 0; i < methodParameters.Length; i++)
             {
@@ -202,11 +257,11 @@ public class McpExecutionService
                     if (!paramInfo.IsOptional && !paramInfo.HasDefaultValue) 
                     {
                         _logger.LogError("Parameter '{ParamName}' for method '{MethodName}' is required by C# signature but no schema was provided for it.", 
-                                         paramNameFromReflection, request.Method);
-                        var error = new JsonRpcError { Code = -32603, Message = $"Internal error: Parameter '{paramNameFromReflection}' schema not found for method '{request.Method}'." };
+                                         paramNameFromReflection, toolName);
+                        var error = new JsonRpcError { Code = -32603, Message = $"Internal error: Parameter '{paramNameFromReflection}' schema not found for method '{toolName}'." };
                         return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
                     }
-                    if (request.Params == null || !request.Params.Value.TryGetProperty(paramNameFromReflection, out _))
+                    if (!hasParamsElement || !paramsElement.TryGetProperty(paramNameFromReflection, out _))
                     {
                         if (paramInfo.HasDefaultValue)
                         {
@@ -221,11 +276,14 @@ public class McpExecutionService
                     _logger.LogWarning("Parameter '{ParamName}' is present in RPC call but not defined in tool schema. Attempting to bind anyway as it's C# optional.", paramNameFromReflection);
                 }
 
-                if (request.Params == null || !request.Params.Value.TryGetProperty(paramNameFromReflection, out JsonElement paramValueJson))
+                JsonElement paramValueJson = default;
+                bool hasParamValue = hasParamsElement && paramsElement.TryGetProperty(paramNameFromReflection, out paramValueJson);
+                
+                if (!hasParamValue)
                 {
                     if (schemaParam != null && schemaParam.IsRequired) 
                     {
-                        var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Missing required parameter '{paramNameFromReflection}' for method '{request.Method}'." };
+                        var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Missing required parameter '{paramNameFromReflection}' for method '{toolName}'." };
                         return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
                     }
                     else if (paramInfo.HasDefaultValue) 
@@ -250,7 +308,7 @@ public class McpExecutionService
                     catch (JsonException jsonEx)
                     {
                         _logger.LogError(jsonEx, "JSON deserialization error for parameter '{ParamName}'.", paramNameFromReflection);
-                        var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Type mismatch or invalid format for parameter '{paramNameFromReflection}' for method '{request.Method}'. Expected type compatible with '{paramInfo.ParameterType.Name}'. Error: {jsonEx.Message}" };
+                        var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Type mismatch or invalid format for parameter '{paramNameFromReflection}' for method '{toolName}'. Expected type compatible with '{paramInfo.ParameterType.Name}'. Error: {jsonEx.Message}" };
                         return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
                     }
                 }
@@ -261,7 +319,57 @@ public class McpExecutionService
             if (!registeredTool.Method.IsStatic)
             {
                 scope = _serviceScopeFactory.CreateScope();
-                serviceInstance = scope.ServiceProvider.GetRequiredService(registeredTool.DeclaringType!);
+                try
+                {
+                    // First attempt: try to get the service directly (works for singleton/scoped/transient services)
+                    serviceInstance = scope.ServiceProvider.GetRequiredService(registeredTool.DeclaringType!);
+                    _logger.LogInformation("Successfully resolved service: {ServiceType}", registeredTool.DeclaringType!.FullName);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // Log the exception for debugging purposes
+                    _logger.LogDebug(ex, "Could not resolve service of type {ServiceType} directly from DI container.", registeredTool.DeclaringType!.FullName);
+                    
+                    // Second attempt: For ASP.NET Core controllers that aren't registered directly
+                    if (typeof(Microsoft.AspNetCore.Mvc.ControllerBase).IsAssignableFrom(registeredTool.DeclaringType))
+                    {
+                        _logger.LogInformation("Attempting to create controller instance directly: {ControllerType}", registeredTool.DeclaringType!.FullName);
+                        try
+                        {
+                            // Create controller instance with constructor injection, manually resolving dependencies
+                            var constructor = registeredTool.DeclaringType.GetConstructors()
+                                .OrderByDescending(c => c.GetParameters().Length)
+                                .FirstOrDefault();
+
+                            if (constructor != null)
+                            {
+                                var parameters = constructor.GetParameters();
+                                var parameterInstances = new object[parameters.Length];
+
+                                for (int i = 0; i < parameters.Length; i++)
+                                {
+                                    parameterInstances[i] = scope.ServiceProvider.GetRequiredService(parameters[i].ParameterType);
+                                }
+
+                                serviceInstance = constructor.Invoke(parameterInstances);
+                                _logger.LogInformation("Successfully created controller instance: {ControllerType}", registeredTool.DeclaringType!.FullName);
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException($"Could not find suitable constructor for {registeredTool.DeclaringType!.FullName}");
+                            }
+                        }
+                        catch (Exception ctorEx)
+                        {
+                            throw new InvalidOperationException($"Failed to instantiate controller {registeredTool.DeclaringType!.FullName}", ctorEx);
+                        }
+                    }
+                    else
+                    {
+                        // Re-throw the original exception for non-controller services
+                        throw;
+                    }
+                }
             }
 
             try
@@ -280,18 +388,18 @@ public class McpExecutionService
                         result = null; 
                     }
                 }
-                _logger.LogInformation("Method {MethodName} executed successfully.", request.Method);
+                _logger.LogInformation("Method {MethodName} executed successfully.", toolName);
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, result: result), _jsonSerializerOptions);
             }
             catch (TargetInvocationException tie)
             {
-                _logger.LogError(tie.InnerException ?? tie, "Error executing method '{MethodName}'.", request.Method);
+                _logger.LogError(tie.InnerException ?? tie, "Error executing method '{MethodName}'.", toolName);
                 var error = new JsonRpcError { Code = -32000, Message = $"Server error: {tie.InnerException?.Message ?? tie.Message}" }; 
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
             }
             catch (Exception ex) 
             {
-                _logger.LogError(ex, "Generic error executing method '{MethodName}'.", request.Method);
+                _logger.LogError(ex, "Generic error executing method '{MethodName}'.", toolName);
                 var error = new JsonRpcError { Code = -32000, Message = $"Server error: {ex.Message}" };
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
             }
