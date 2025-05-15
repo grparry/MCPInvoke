@@ -27,6 +27,18 @@ public class McpParameterInfo
     /// Optional. A human-readable description of the parameter.
     /// </summary>
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Additional annotations for this parameter, including type metadata
+    /// that's not captured by the basic JSON Schema type system.
+    /// </summary>
+    /// <remarks>
+    /// This can include information like whether a parameter is an enum,
+    /// whether it uses string representation (JsonStringEnumConverter),
+    /// and other parameter-specific metadata.
+    /// </remarks>
+    public Dictionary<string, object>? Annotations { get; set; }
+    
     // public object? DefaultValue { get; set; }
     // public McpSchema? SchemaDetails { get; set; } // For more complex types like objects or arrays with specific item schemas
 }

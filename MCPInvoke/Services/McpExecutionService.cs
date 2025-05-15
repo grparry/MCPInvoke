@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MCPInvoke.Services;
@@ -26,24 +27,31 @@ public class McpExecutionService
     /// Initializes a new instance of the <see cref="McpExecutionService"/> class.
     /// </summary>
     /// <param name="serviceScopeFactory">The factory used to create scopes for resolving services.</param>
-    /// <param name="toolDefinitionProvider">The provider used to get tool definitions for registration.</param>
+    /// <param name="toolDefinitionProvider">The provider that supplies tool definitions to be registered.</param>
     /// <param name="logger">The logger for logging messages.</param>
     public McpExecutionService(
-        IServiceScopeFactory serviceScopeFactory, 
+        IServiceScopeFactory serviceScopeFactory,
         IMcpToolDefinitionProvider toolDefinitionProvider,
-        ILogger<McpExecutionService> logger) 
+        ILogger<McpExecutionService> logger)
     {
-        _serviceScopeFactory = serviceScopeFactory;
-        _toolDefinitionProvider = toolDefinitionProvider; 
-        _logger = logger; 
-
-        PopulateToolRegistryFromProvider(toolDefinitionProvider);
-
+        _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
+        _toolDefinitionProvider = toolDefinitionProvider ?? throw new ArgumentNullException(nameof(toolDefinitionProvider));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Configure JSON serialization options to properly handle string enums
         _jsonSerializerOptions = new JsonSerializerOptions
         {
+            PropertyNameCaseInsensitive = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false 
+            WriteIndented = true,
+            // Add JsonStringEnumConverter to handle string enum serialization
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
+        
+        _logger.LogInformation("McpExecutionService initialized with JsonStringEnumConverter");
+        
+        // Populate tool registry from provider
+        PopulateToolRegistryFromProvider(toolDefinitionProvider);
     }
 
     /// <summary>
@@ -281,15 +289,18 @@ public class McpExecutionService
                 
                 if (!hasParamValue)
                 {
-                    if (schemaParam != null && schemaParam.IsRequired) 
+                    // First check if the C# parameter has a default value, which means it's optional
+                    // This takes precedence over the schema definition
+                    if (paramInfo.HasDefaultValue) 
+                    {
+                        callParameters[i] = paramInfo.DefaultValue;
+                        _logger.LogInformation("      Using default value for optional param '{ParamName}' which was not provided in request.", paramNameFromReflection);
+                    }
+                    // Only treat as required if it doesn't have a default value AND the schema marks it as required
+                    else if (schemaParam != null && schemaParam.IsRequired) 
                     {
                         var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Missing required parameter '{paramNameFromReflection}' for method '{toolName}'." };
                         return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
-                    }
-                    else if (paramInfo.HasDefaultValue) 
-                    {
-                        callParameters[i] = paramInfo.DefaultValue;
-                        _logger.LogInformation("      Using C# default value for '{ParamName}'.", paramNameFromReflection);
                     }
                     else 
                     {
@@ -302,8 +313,263 @@ public class McpExecutionService
                     try
                     {
                         Type targetType = schemaParam?.ClrType ?? paramInfo.ParameterType;
-                        callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
-                        _logger.LogInformation("      Successfully bound '{ParamName}' from RPC params.", paramNameFromReflection);
+                        
+                        // CRITICAL FIX: Check if the parameter is an enum but targetType isn't recognizing it
+                        // This specifically addresses the issue where an enum is being treated as Int32
+                        // IMPORTANT: We only want to apply this fix to actual enum types, not to complex objects
+                        // that might contain enum properties (like the LLM request object)
+                        if (paramInfo.ParameterType.IsEnum && targetType == typeof(int) 
+                            && !paramInfo.ParameterType.IsClass && !paramInfo.ParameterType.IsInterface)
+                        {
+                            _logger.LogWarning("      CORRECTING TYPE MISMATCH: Parameter '{ParamName}' is enum type '{EnumType}' but was incorrectly mapped to Int32",
+                                              paramNameFromReflection, paramInfo.ParameterType.Name);
+                                              
+                            // Override targetType to be the actual enum type
+                            targetType = paramInfo.ParameterType;
+                            _logger.LogInformation("      Corrected target type to enum: {EnumType}", targetType.Name);
+                        }
+                        
+                        // Special handling for enum types
+                        if (targetType.IsEnum)
+                        {
+                            _logger.LogInformation("      Special handling for ENUM parameter '{ParamName}' with type '{EnumType}'", 
+                                                  paramNameFromReflection, targetType.Name);
+                                                  
+                            // Check if the enum type is decorated with JsonStringEnumConverter
+                            bool usesStringEnumConverter = targetType.GetCustomAttributes(true)
+                                .Any(attr => attr.GetType().Name.Contains("JsonStringEnumConverter"));
+                            
+                            // Also check if the parameter is decorated with JsonStringEnumConverter
+                            var parameterAttributes = paramInfo.GetCustomAttributes(true);
+                            bool paramUsesStringEnum = parameterAttributes.Any(attr => attr.GetType().Name.Contains("JsonStringEnumConverter"));
+                            
+                            // Log detailed debugging info
+                            _logger.LogInformation("      Enum '{EnumType}' type-level JsonStringEnumConverter: {TypeConverter}, parameter-level: {ParamConverter}", 
+                                                 targetType.Name, usesStringEnumConverter, paramUsesStringEnum);
+                                                 
+                            // Combine attributes - if either the type or parameter has the converter, treat as string enum
+                            usesStringEnumConverter = usesStringEnumConverter || paramUsesStringEnum;
+                            
+                            // Detailed logging of enum properties and attributes
+                            _logger.LogInformation("      DETAILED ENUM DIAGNOSTICS for '{ParamName}' of type '{EnumType}'", 
+                                               paramNameFromReflection, targetType.Name);
+                            _logger.LogInformation("      - JsonSerializerOptions Contains JsonStringEnumConverter: {HasConverter}", 
+                                               _jsonSerializerOptions.Converters.Any(c => c.GetType().Name.Contains("JsonStringEnumConverter")));
+                            
+                            // Log all attributes on the parameter type
+                            var typeAttrs = targetType.GetCustomAttributes(true);
+                            foreach (var attr in typeAttrs)
+                            {
+                                _logger.LogInformation("      - Type Attribute: {AttributeType}", attr.GetType().FullName);
+                            }
+                            
+                            // Log all attributes on the parameter
+                            var paramAttrs = paramInfo.GetCustomAttributes(true);
+                            foreach (var attr in paramAttrs)
+                            {
+                                _logger.LogInformation("      - Parameter Attribute: {AttributeType}", attr.GetType().FullName);
+                            }
+                            
+                            // Log the actual JsonElement for the parameter
+                            _logger.LogInformation("      - Raw JSON value: {RawJson}, Type: {ValueKind}", 
+                                               paramValueJson.GetRawText(), paramValueJson.ValueKind);
+                            
+                            // CRITICAL FIX: Create a custom JsonSerializerOptions specifically for enum parameters
+                            // with JsonStringEnumConverter that ensures enum values can be properly deserialized
+                            var enumSerializerOptions = new JsonSerializerOptions
+                            {
+                                PropertyNameCaseInsensitive = true,
+                                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, false) }
+                            };
+                            _logger.LogInformation("      Created custom JsonSerializerOptions with JsonStringEnumConverter specifically for enum parameters");
+                            
+                            // Multi-strategy approach to handle enum parameters properly
+                            _logger.LogInformation("      Using multi-strategy approach for enum parameter binding");
+                            
+                            // IMPROVED STRATEGY 1: Try direct deserialization with custom enum serializer options
+                            // The key difference is we'll wrap the string value in quotes if it's a string-based enum
+                            if (paramValueJson.ValueKind == JsonValueKind.String && usesStringEnumConverter)
+                            {
+                                try
+                                {
+                                    string enumStringValue = paramValueJson.GetString() ?? string.Empty;
+                                    _logger.LogInformation("      ENHANCED STRATEGY 1: Direct string deserialization with JsonStringEnumConverter for string '{EnumValue}'", enumStringValue);
+                                    
+                                    // Manually format JSON that JsonStringEnumConverter can understand - this is the crucial fix
+                                    string jsonString = $"\"{enumStringValue}\"";
+                                    _logger.LogInformation("      Using specifically formatted JSON string: {JsonString}", jsonString);
+                                    
+                                    callParameters[i] = JsonSerializer.Deserialize(jsonString, targetType, enumSerializerOptions);
+                                    _logger.LogInformation("      SUCCESS: Bound enum parameter '{ParamName}' using enhanced string deserialization with JsonStringEnumConverter", 
+                                                          paramNameFromReflection);
+                                    continue; // Continue to next parameter if success
+                                }
+                                catch (Exception directEx)
+                                {
+                                    _logger.LogWarning("      ENHANCED STRATEGY 1 FAILED: {Error}", directEx.Message);
+                                }
+                            }
+                            else
+                            {
+                                // Standard attempt for non-string or non-JsonStringEnumConverter enums
+                                try
+                                {
+                                    _logger.LogInformation("      STRATEGY 1: Direct deserialization with JsonStringEnumConverter");
+                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, enumSerializerOptions);
+                                    _logger.LogInformation("      SUCCESS: Bound enum parameter '{ParamName}' using direct deserialization with JsonStringEnumConverter", 
+                                                          paramNameFromReflection);
+                                    continue; // Continue to next parameter if success
+                                }
+                                catch (Exception directEx)
+                                {
+                                    _logger.LogWarning("      STRATEGY 1 FAILED: {Error}", directEx.Message);
+                                }
+                            }
+
+                            // Handle different JSON value kinds for enums - multiple strategies
+                            if (paramValueJson.ValueKind == JsonValueKind.String)
+                            {
+                                string enumStringValue = paramValueJson.GetString() ?? string.Empty;
+                                _logger.LogInformation("      STRATEGY 2: Processing enum parameter with string value: '{EnumValue}'", enumStringValue);
+                                
+                                // Strategy 2: Try case-insensitive enum parsing
+                                try
+                                {
+                                    _logger.LogInformation("      STRATEGY 2A: Direct Enum.Parse with case-insensitive matching");
+                                    callParameters[i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
+                                    _logger.LogInformation("      SUCCESS: Bound enum '{ParamName}' with case-insensitive match", paramNameFromReflection);
+                                    continue; // Continue to next parameter if success
+                                }
+                                catch (Exception enumEx)
+                                {
+                                    _logger.LogWarning("      STRATEGY 2A FAILED: {Error}", enumEx.Message);
+                                }
+                                
+                                // Strategy 3: Try manual string matching against enum names
+                                try
+                                {
+                                    _logger.LogInformation("      STRATEGY 3: Manual string matching against enum names");
+                                    var enumValues = Enum.GetNames(targetType);
+                                    var caseInsensitiveMatch = enumValues.FirstOrDefault(name => 
+                                        string.Equals(name, enumStringValue, StringComparison.OrdinalIgnoreCase));
+                                        
+                                    if (caseInsensitiveMatch != null)
+                                    {
+                                        _logger.LogInformation("      SUCCESS: Found case-insensitive enum name match: '{Original}' → '{Match}'", 
+                                                             enumStringValue, caseInsensitiveMatch);
+                                        callParameters[i] = Enum.Parse(targetType, caseInsensitiveMatch);
+                                        continue; // Continue to next parameter if success
+                                    }
+                                    _logger.LogWarning("      STRATEGY 3 FAILED: No matching enum name found");
+                                }
+                                catch (Exception manualEx)
+                                {
+                                    _logger.LogWarning("      STRATEGY 3 FAILED with exception: {Error}", manualEx.Message);
+                                }
+                                
+                                // Strategy 4: Try numeric parsing if the string contains a number
+                                try
+                                {
+                                    _logger.LogInformation("      STRATEGY 4: Try parsing string as numeric enum value");
+                                    if (int.TryParse(enumStringValue, out var enumIntValue))
+                                    {
+                                        _logger.LogInformation("      Converting string '{Value}' to numeric enum value {IntValue}", 
+                                                           enumStringValue, enumIntValue);
+                                        callParameters[i] = Enum.ToObject(targetType, enumIntValue);
+                                        continue; // Continue to next parameter if success
+                                    }
+                                    _logger.LogWarning("      STRATEGY 4 FAILED: String is not a valid numeric value");
+                                }
+                                catch (Exception numericEx)
+                                {
+                                    _logger.LogWarning("      STRATEGY 4 FAILED with exception: {Error}", numericEx.Message);
+                                }
+                            }
+                            else if (paramValueJson.ValueKind == JsonValueKind.Number)
+                            {
+                                // Strategy 5: Handle numeric enum values
+                                try
+                                {
+                                    _logger.LogInformation("      STRATEGY 5: Processing numeric enum value");
+                                    int enumIntValue = paramValueJson.GetInt32();
+                                    
+                                    // For all enums, just convert the number to the enum regardless of JsonStringEnumConverter
+                                    // This simplifies the logic and is more reliable
+                                    callParameters[i] = Enum.ToObject(targetType, enumIntValue);
+                                    _logger.LogInformation("      SUCCESS: Bound enum '{ParamName}' with numeric value {Value}", 
+                                                         paramNameFromReflection, enumIntValue);
+                                    continue; // Continue to next parameter if success
+                                }
+                                catch (Exception enumEx)
+                                {
+                                    _logger.LogError("      STRATEGY 5 FAILED with error: {Error}", enumEx.Message);
+                                }
+                            }
+                            
+                            // Final fallback: Use standard deserialization
+                            _logger.LogWarning("      ALL STRATEGIES FAILED! Fallback to default deserializer for parameter '{ParamName}'", 
+                                              paramNameFromReflection);
+                            callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+                        }
+                        else
+                        {
+                            // For non-enum types, check if we need to handle a complex object with enums
+                            if (targetType.IsClass || targetType.IsInterface || targetType.IsValueType)
+                            {
+                                try
+                                {
+                                    _logger.LogInformation("      Binding complex parameter '{ParamName}' of type '{Type}'", 
+                                                       paramNameFromReflection, targetType.Name);
+                                    
+                                    // CRITICAL: Check if the parameter type is an enum or contains enum properties
+                                    // This handles cases where the proxy/controller is expecting an enum but we're getting a raw value
+                                    if (targetType.IsEnum || targetType.GetProperties().Any(p => p.PropertyType.IsEnum))
+                                    {
+                                        _logger.LogInformation("      Parameter '{ParamName}' is of enum type or contains enum properties. Using specialized handling.",
+                                             paramNameFromReflection);
+                                             
+                                        // Check if the enum type is decorated with JsonStringEnumConverter
+                                        bool usesStringEnumConverter = targetType.GetCustomAttributes(true)
+                                            .Any(attr => attr.GetType().Name.Contains("JsonStringEnumConverter"));
+                                            
+                                        if (usesStringEnumConverter && paramValueJson.ValueKind == JsonValueKind.String)
+                                        {
+                                            string enumStringValue = paramValueJson.GetString() ?? string.Empty;
+                                            _logger.LogInformation("      Using specialized enum handling for string value '{EnumValue}'", enumStringValue);
+                                            
+                                            // Try Enum.Parse with the string value
+                                            try 
+                                            {
+                                                callParameters[i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
+                                                _logger.LogInformation("      Successfully parsed enum string value '{EnumValue}' to {EnumType}", 
+                                                                     enumStringValue, targetType.Name);
+                                                continue;
+                                            }
+                                            catch (Exception enumEx)
+                                            {
+                                                _logger.LogWarning("      Failed to directly parse string to enum: {Error}", enumEx.Message);
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Attempt standard deserialization with our JsonSerializerOptions
+                                    // that has JsonStringEnumConverter registered
+                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+                                    _logger.LogInformation("      Successfully bound complex parameter '{ParamName}'", paramNameFromReflection);
+                                }
+                                catch (Exception complexEx)
+                                {
+                                    _logger.LogError(complexEx, "Failed to deserialize complex parameter '{ParamName}'", paramNameFromReflection);
+                                    throw;
+                                }
+                            }
+                            else
+                            {
+                                // Standard deserialization for simple non-enum types
+                                callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+                                _logger.LogInformation("      Successfully bound '{ParamName}' from RPC params.", paramNameFromReflection);
+                            }
+                        }
                     }
                     catch (JsonException jsonEx)
                     {
@@ -381,7 +647,68 @@ public class McpExecutionService
                     await taskResult.ConfigureAwait(false);
                     if (taskResult.GetType().IsGenericType) 
                     {
-                        result = taskResult.GetType().GetProperty("Result")?.GetValue(taskResult);
+                        // Get the raw Task<T>.Result value
+                        var taskResultValue = taskResult.GetType().GetProperty("Result")?.GetValue(taskResult);
+                        
+                        // Check if the result is from ASP.NET Core (ActionResult<T>, ObjectResult, etc.)
+                        var resultType = taskResultValue?.GetType();
+                        if (resultType != null)
+                        {
+                            _logger.LogInformation("Processing return type: {ResultType}", resultType.FullName);
+                            
+                            // Handle ActionResult<T> wrapper
+                            if (resultType.IsGenericType && resultType.GetGenericTypeDefinition().Name.StartsWith("ActionResult"))
+                            {
+                                _logger.LogInformation("Detected ActionResult<T> return type...");
+                                // Get the Result property if it exists (this would be an IActionResult)
+                                var resultProperty = resultType.GetProperty("Result");
+                                if (resultProperty != null)
+                                {
+                                    taskResultValue = resultProperty.GetValue(taskResultValue);
+                                    _logger.LogInformation("Found Result property, new type: {ResultType}", 
+                                        taskResultValue?.GetType()?.FullName ?? "null");
+                                    resultType = taskResultValue?.GetType();
+                                }
+                            }
+                            
+                            // Now handle IActionResult implementations (OkObjectResult, NotFoundResult, etc.)
+                            if (resultType != null && typeof(Microsoft.AspNetCore.Mvc.IActionResult).IsAssignableFrom(resultType))
+                            {
+                                _logger.LogInformation("Processing IActionResult type: {ResultType}", resultType.FullName);
+                                
+                                // Check for ObjectResult and its derivatives (OkObjectResult, BadRequestObjectResult, etc.)
+                                if (typeof(Microsoft.AspNetCore.Mvc.ObjectResult).IsAssignableFrom(resultType))
+                                {
+                                    _logger.LogInformation("Found ObjectResult type, extracting Value property");
+                                    var valueProperty = resultType.GetProperty("Value");
+                                    if (valueProperty != null)
+                                    {
+                                        result = valueProperty.GetValue(taskResultValue);
+                                        _logger.LogInformation("Extracted Value from ObjectResult: {ValueType}", 
+                                            result?.GetType()?.FullName ?? "null");
+                                    }
+                                    else
+                                    {
+                                        result = taskResultValue;
+                                    }
+                                }
+                                else
+                                {
+                                    // For other action results (like StatusCodeResult), just use as-is
+                                    result = taskResultValue;
+                                }
+                            }
+                            else
+                            {
+                                // Regular object value, not an ActionResult
+                                result = taskResultValue;
+                            }
+                        }
+                        else
+                        {
+                            // If resultType is null, use the original taskResultValue
+                            result = taskResultValue;
+                        }
                     }
                     else 
                     {
@@ -389,6 +716,18 @@ public class McpExecutionService
                     }
                 }
                 _logger.LogInformation("Method {MethodName} executed successfully.", toolName);
+                
+                // Ensure consistent handling of results, especially for arrays
+                // MCP client expects a specific result format
+                if (result != null && (result.GetType().IsArray || (result.GetType().IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(result.GetType()) && result.GetType() != typeof(string))))
+                {
+                    _logger.LogInformation("Result is an array or collection. Wrapping in a compatible object format.");
+                    // Instead of using the array directly, wrap it in a container object
+                    // This helps Go clients that expect a specific structure
+                    result = new { items = result };
+                    _logger.LogInformation("Result wrapped as: {ResultType}", result.GetType().Name);
+                }
+                
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, result: result), _jsonSerializerOptions);
             }
             catch (TargetInvocationException tie)

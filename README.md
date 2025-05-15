@@ -13,6 +13,16 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.2.0
+
+- **Enhanced API Response Handling** - Improved handling of complex ASP.NET Core return types including ActionResult<T>, ObjectResult, and other IActionResult implementations
+- **MCPBuckle 1.5.0 Integration** - Updated to use MCPBuckle 1.5.0 with enhanced schema generation, better parameter binding, and improved enum support
+- **Advanced Enum Support** - Added full support for enum types, including both integer and string-based enums with JsonStringEnumConverter compatibility
+- **Collection Type Support** - Better handling of array and collection return types for improved client compatibility
+- **New Middleware Architecture** - Introduced dedicated McpInvokeMiddleware for more efficient request processing
+- **Simplified Configuration** - Added ApplicationBuilderExtensions with UseMcpInvoke extension method for easier integration
+- **Parameter Annotations** - Added support for additional parameter metadata through Annotations property
+
 ## What's New in 1.1.0
 
 - **MCPBuckle 1.4.0 Integration** - Updated to use the MCPBuckle 1.4.0 NuGet package for better MCP specification compliance
@@ -33,6 +43,7 @@ dotnet add package MCPInvoke
 ```csharp
 // In Program.cs or Startup.cs
 using MCPInvoke.Extensions;
+using MCPInvoke.AspNetCore.Extensions;
 
 // Register MCPInvoke services
 builder.Services.AddMcpInvoke();
@@ -40,8 +51,8 @@ builder.Services.AddMcpInvoke();
 // Register an implementation of IMcpToolDefinitionProvider
 // See below for ASP.NET Core controller integration
 
-// Register endpoint
-app.MapMcpInvoke("/mcpinvoke");
+// Register endpoint using the middleware
+app.UseMcpInvoke("/mcpinvoke");
 ```
 
 ### ASP.NET Core Controller Integration
@@ -61,8 +72,8 @@ builder.Services.AddMcpInvokeWithControllers(options => {
     // options.ExcludedControllers.Add("Health");
 });
 
-// Map the MCP Invoke endpoint
-app.MapMcpInvoke("/mcpinvoke");
+// Use the MCP Invoke middleware
+app.UseMcpInvoke("/mcpinvoke");
 ```
 
 For more detailed information on ASP.NET Core integration, see the [AspNetCore README](MCPInvoke/AspNetCore/README.md).
