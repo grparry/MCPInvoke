@@ -69,6 +69,27 @@ public static class McpInvokeExtensions
                     }
 
                     // Handle special JSON-RPC methods
+                    // Handle the MCP initialize method
+                    if (method == "initialize")
+                    {
+                        // Return server capabilities according to MCP protocol
+                        var response = new JsonRpcResponse(id, result: new
+                        {
+                            protocolVersion = "2025-06-18",
+                            serverInfo = new
+                            {
+                                name = "MCPInvoke",
+                                version = "1.2.0"
+                            },
+                            capabilities = new
+                            {
+                                tools = new { }  // Indicates tool support
+                            }
+                        });
+                        var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                        return Results.Text(responseJson, contentType: "application/json-rpc+json; charset=utf-8");
+                    }
+                    
                     if (method == "notifications/initialized")
                     {
                         // Acknowledge the initialization notification

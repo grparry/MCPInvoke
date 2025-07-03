@@ -1,10 +1,10 @@
 # MCPInvoke
 
-MCPInvoke is a custom MCP execution endpoint, designed as a companion to the MCPBuckle library (which handles MCP discovery). MCPInvoke manages the execution of tools defined by MCP requests.
+MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution.
 
 ## Purpose
 
-This library enables ASP.NET Core applications with existing REST APIs and Swagger/OpenAPI documentation to easily become MCP-enabled. It provides a standardized execution endpoint for tools discovered via MCPBuckle.
+This library enables ASP.NET Core applications with existing REST APIs and Swagger/OpenAPI documentation to easily become MCP-enabled. It provides a complete MCP server implementation that handles both tool discovery and execution, making your APIs accessible to AI agents and tools like Claude Code CLI.
 
 ## Features
 
@@ -12,6 +12,17 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Standard-Compliant** - Implements JSON-RPC 2.0 and MCP specifications
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
+
+## What's New in 1.3.0
+
+- **Full MCP Protocol Support** - MCPInvoke now implements the complete MCP protocol specification:
+  - `initialize` - Returns server capabilities with protocol version 2025-06-18
+  - `notifications/initialized` - Acknowledges client initialization
+  - `tools/list` - Returns the list of available tools with proper JSON Schema
+  - `tools/call` - Executes tool methods (existing functionality)
+- **Claude Code CLI Integration** - Fully compatible with Anthropic's Claude Code CLI
+- **JSON Schema Compliance** - Fixed schema generation to comply with JSON Schema draft 2020-12
+- **Improved Error Handling** - Better error messages and protocol-compliant error responses
 
 ## What's New in 1.2.0
 
@@ -77,3 +88,39 @@ app.UseMcpInvoke("/mcpinvoke");
 ```
 
 For more detailed information on ASP.NET Core integration, see the [AspNetCore README](MCPInvoke/AspNetCore/README.md).
+
+## Claude Code CLI Integration
+
+MCPInvoke 1.3.0+ is fully compatible with Anthropic's Claude Code CLI. To integrate your API with Claude:
+
+1. **Configure your API with MCPInvoke**:
+   ```csharp
+   // In Program.cs
+   builder.Services.AddMcpInvokeWithControllers();
+   app.UseMcpInvoke("/mcpinvoke");
+   ```
+
+2. **Add your API as an MCP server in Claude Code CLI**:
+   ```bash
+   claude mcp add --transport http my-api http://localhost:5000/mcpinvoke
+   ```
+
+3. **Use your API tools in Claude**:
+   ```bash
+   echo "Use the mcp__my-api__ToolName to perform task X" | claude
+   ```
+
+Your API tools will be available with the prefix `mcp__<server-name>__` in Claude Code CLI.
+
+## MCP Protocol Support
+
+MCPInvoke implements the full MCP protocol specification:
+
+| Method | Description | Response |
+|--------|-------------|----------|
+| `initialize` | Client handshake | Server capabilities and protocol version |
+| `notifications/initialized` | Client ready notification | Acknowledgment |
+| `tools/list` | Request available tools | List of tool definitions with JSON schemas |
+| `tools/call` | Execute a tool | Tool execution result |
+
+The server supports protocol version `2025-06-18` and is compatible with all MCP-compliant clients.

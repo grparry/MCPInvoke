@@ -1,9 +1,11 @@
 using System;
 using System.IO;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using MCPInvoke.Models;
 using MCPInvoke.Services;
 
 namespace MCPInvoke.AspNetCore.Middleware
@@ -56,8 +58,14 @@ namespace MCPInvoke.AspNetCore.Middleware
                 
                 try
                 {
-                    // Process the request using the execution service
-                    string responseText = await _executionService.ProcessRequestAsync(requestBody);
+                    // First check for special MCP protocol methods
+                    string responseText = await HandleSpecialMcpMethodsAsync(requestBody);
+                    
+                    if (responseText == null)
+                    {
+                        // Not a special method, process normally using the execution service
+                        responseText = await _executionService.ProcessRequestAsync(requestBody);
+                    }
                     
                     // Log the response for debugging
                     _logger.LogInformation("JSON-RPC response: {Response}", responseText);
@@ -78,6 +86,93 @@ namespace MCPInvoke.AspNetCore.Middleware
             
             // If not a POST request or not JSON content type, continue to the next middleware
             await _next(context);
+        }
+
+        /// <summary>
+        /// Handles special MCP protocol methods like initialize, notifications/initialized, and tools/list.
+        /// </summary>
+        /// <param name="requestBody">The JSON-RPC request body.</param>
+        /// <returns>The response JSON if handled, null otherwise.</returns>
+        private async Task<string> HandleSpecialMcpMethodsAsync(string requestBody)
+        {
+            try
+            {
+                using var requestJson = JsonDocument.Parse(requestBody);
+                var root = requestJson.RootElement;
+
+                // Check if it's a valid JSON-RPC request
+                if (root.TryGetProperty("jsonrpc", out var jsonrpcVersion) &&
+                    jsonrpcVersion.GetString() == "2.0" &&
+                    root.TryGetProperty("method", out var methodElement))
+                {
+                    string method = methodElement.GetString() ?? string.Empty;
+                    JsonElement? id = null;
+                    if (root.TryGetProperty("id", out var idElement))
+                    {
+                        id = idElement.Clone();
+                    }
+
+                    var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+                    // Handle the MCP initialize method
+                    if (method == "initialize")
+                    {
+                        _logger.LogInformation("Handling MCP initialize method");
+                        
+                        // Return server capabilities according to MCP protocol
+                        var response = new JsonRpcResponse(id, result: new
+                        {
+                            protocolVersion = "2025-06-18",
+                            serverInfo = new
+                            {
+                                name = "MCPInvoke",
+                                version = "1.2.0"
+                            },
+                            capabilities = new
+                            {
+                                tools = new { }  // Indicates tool support
+                            }
+                        });
+                        return JsonSerializer.Serialize(response, jsonOptions);
+                    }
+
+                    // Handle the notifications/initialized method
+                    if (method == "notifications/initialized")
+                    {
+                        _logger.LogInformation("Handling MCP notifications/initialized method");
+                        
+                        // Acknowledge the initialization notification
+                        var response = new JsonRpcResponse(id, result: new { success = true });
+                        return JsonSerializer.Serialize(response, jsonOptions);
+                    }
+
+                    // Handle the tools/list method
+                    if (method == "tools/list")
+                    {
+                        _logger.LogInformation("Handling MCP tools/list method");
+                        
+                        // Use the execution service to get tool definitions
+                        var toolsListRequest = new JsonRpcRequest
+                        {
+                            JsonRpcVersion = "2.0",
+                            Method = "tools/list",
+                            Params = root.TryGetProperty("params", out var paramsElement) ? paramsElement.Clone() : null,
+                            Id = id
+                        };
+                        
+                        // Get tools from the execution service
+                        var toolsResponse = await _executionService.ProcessRequestAsync(JsonSerializer.Serialize(toolsListRequest, jsonOptions));
+                        return toolsResponse;
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Failed to parse JSON-RPC request for special method handling");
+            }
+
+            // Not a special method
+            return null;
         }
     }
 }

@@ -184,8 +184,45 @@ public class McpExecutionService
                 _ => null 
             };
 
-            // Handle MCP-style requests (method = "tools/call")
-            if (request.Method == "tools/call")
+            // Handle MCP-style requests
+            if (request.Method == "tools/list")
+            {
+                _logger.LogInformation("Processing tools/list request");
+                
+                // Return the list of available tools
+                var tools = _toolDefinitionProvider.GetToolDefinitions().Select(tool => new
+                {
+                    name = tool.Name,
+                    description = tool.Description,
+                    inputSchema = new
+                    {
+                        type = "object",
+                        properties = tool.InputSchema.ToDictionary(
+                            param => param.Name,
+                            param =>
+                            {
+                                var props = new Dictionary<string, object>
+                                {
+                                    ["type"] = param.Type.ToLowerInvariant()
+                                };
+                                
+                                // Only include description if it's not null
+                                if (!string.IsNullOrEmpty(param.Description))
+                                {
+                                    props["description"] = param.Description;
+                                }
+                                
+                                return props;
+                            }
+                        ),
+                        required = tool.InputSchema.Where(p => p.IsRequired).Select(p => p.Name).ToArray()
+                    }
+                }).ToArray();
+                
+                var result = new { tools };
+                return JsonSerializer.Serialize(new JsonRpcResponse(responseId, result: result), _jsonSerializerOptions);
+            }
+            else if (request.Method == "tools/call")
             {
                 _logger.LogInformation("Processing MCP-compliant request with method: tools/call, ID: {RequestId}", loggingRequestId);
                 

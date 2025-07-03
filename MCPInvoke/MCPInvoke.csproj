@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.2.0</Version> <!-- Updated to use MCPBuckle 1.5.0 NuGet package -->
+    <Version>1.3.0</Version> <!-- Full MCP Protocol Support with Claude Code CLI compatibility -->
     <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
     <Company>MCPInvoke</Company> <!-- Or your name/org -->
-    <Description>MCPInvoke is a lightweight .NET library that provides an execution endpoint for Model Context Protocol (MCP) tools. It works in conjunction with MCPBuckle (for discovery) to enable AI agent interaction with your ASP.NET Core APIs. Version 1.2.0 updates to use MCPBuckle 1.5.0 for improved schema generation, enhanced parameter binding, and better support for complex types.</Description>
+    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.3.0 adds complete MCP protocol compliance with support for initialize, tools/list, and Claude Code CLI integration.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
     <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>
