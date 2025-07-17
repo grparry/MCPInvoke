@@ -13,6 +13,11 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.3.1
+
+- **Aligned with MCPBuckle 1.5.1** - Updated to use the latest MCPBuckle version
+- **Added Comprehensive Test Suite** - First test suite with 53 tests covering all functionality
+
 ## What's New in 1.3.0
 
 - **Full MCP Protocol Support** - MCPInvoke now implements the complete MCP protocol specification:

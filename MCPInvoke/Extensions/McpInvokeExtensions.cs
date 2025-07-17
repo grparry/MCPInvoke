@@ -98,13 +98,11 @@ public static class McpInvokeExtensions
                         return Results.Text(responseJson, contentType: "application/json-rpc+json; charset=utf-8");
                     }
 
-                    // For the tools/list method, let the MCPBuckle handle it
+                    // For the tools/list method, delegate to the execution service
                     if (method == "tools/list")
                     {
-                        var error = new JsonRpcError { Code = -32601, Message = $"Method '{method}' not supported at this endpoint. Use the MCP context endpoint instead." };
-                        var response = new JsonRpcResponse(id, error: error);
-                        var responseJson = JsonSerializer.Serialize(response, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                        return Results.Text(responseJson, contentType: "application/json-rpc+json; charset=utf-8");
+                        var toolsResponse = await mcpService.ProcessRequestAsync(requestBody);
+                        return Results.Text(toolsResponse, contentType: "application/json-rpc+json; charset=utf-8");
                     }
                 }
             }

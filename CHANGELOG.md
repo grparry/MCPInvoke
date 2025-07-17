@@ -1,5 +1,13 @@
 # MCPInvoke Changelog
 
+## [1.3.1] - 2025-07-17
+
+### Added
+- **Comprehensive Test Suite** - Added 53 tests covering all functionality
+
+### Changed
+- **Aligned with MCPBuckle 1.5.1** - Updated dependency to MCPBuckle 1.5.1
+
 ## [1.3.0] - 2025-01-03
 
 ### Added

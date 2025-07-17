@@ -93,7 +93,7 @@ namespace MCPInvoke.AspNetCore.Middleware
         /// </summary>
         /// <param name="requestBody">The JSON-RPC request body.</param>
         /// <returns>The response JSON if handled, null otherwise.</returns>
-        private async Task<string> HandleSpecialMcpMethodsAsync(string requestBody)
+        private async Task<string?> HandleSpecialMcpMethodsAsync(string requestBody)
         {
             try
             {
