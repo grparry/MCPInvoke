@@ -13,9 +13,15 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.3.3
+
+- **Claude Code CLI Content Schema Fix** - Fixed critical MCP response format to comply with Claude Code CLI content schema requirements
+- **MCP Content Format Compliance** - All tool responses now properly formatted as `{"content": [{"type": "text", "text": "json_data"}]}`
+- **Full Claude Code CLI Compatibility** - MCPInvoke now works seamlessly with Claude Code CLI and other MCP clients expecting content schema format
+
 ## What's New in 1.3.2
 
-- **Critical Complex Object Fix** - Fixed major bug where complex objects like `Workflow3ExecutionRequest` failed with JsonElement conversion errors
+- **Critical Complex Object Fix** - Fixed major bug where complex objects like `BusinessProcessRequest` failed with JsonElement conversion errors
 - **Enhanced Test Coverage** - Added 6 new test methods specifically for complex object deserialization scenarios
 - **Improved Error Handling** - Better error messages and logging for complex object deserialization failures
 

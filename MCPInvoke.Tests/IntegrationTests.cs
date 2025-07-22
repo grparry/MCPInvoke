@@ -60,6 +60,35 @@ namespace MCPInvoke.Tests
             _server?.Dispose();
         }
 
+        /// <summary>
+        /// Helper method to extract the actual data from MCP content schema format
+        /// </summary>
+        private string ExtractContentText(JsonElement result)
+        {
+            // MCPInvoke 1.3.3+ wraps results in MCP content schema: {"content": [{"type": "text", "text": "stringified_json"}]}
+            if (result.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            {
+                var firstContent = content.EnumerateArray().FirstOrDefault();
+                if (firstContent.TryGetProperty("type", out var type) && type.GetString() == "text" &&
+                    firstContent.TryGetProperty("text", out var text))
+                {
+                    var textValue = text.GetString() ?? string.Empty;
+                    // The text contains JSON-stringified data, so we need to parse it back
+                    try
+                    {
+                        return JsonSerializer.Deserialize<string>(textValue) ?? string.Empty;
+                    }
+                    catch
+                    {
+                        // If it's not valid JSON string, return as-is
+                        return textValue;
+                    }
+                }
+            }
+            // Fallback for backward compatibility or non-content responses
+            return result.GetString() ?? string.Empty;
+        }
+
         [Fact]
         public async Task FullMcpProtocol_InitializeFlow_WorksCorrectly()
         {
@@ -168,8 +197,10 @@ namespace MCPInvoke.Tests
             // Assert
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            // MCPInvoke returns the ASP.NET Core result object with a value property
-            Assert.True(result.TryGetProperty("value", out var value));
+            // MCPInvoke 1.3.3+ wraps results in MCP content schema, but ASP.NET Core ActionResult<T> adds a value wrapper
+            var contentText = ExtractContentText(result);
+            var valueJson = JsonDocument.Parse(contentText);
+            Assert.True(valueJson.RootElement.TryGetProperty("value", out var value));
             Assert.Contains("Data for ID: 42", value.GetString());
         }
 
@@ -196,8 +227,10 @@ namespace MCPInvoke.Tests
             // Assert
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            // MCPInvoke returns the ASP.NET Core result object with nested value
-            Assert.True(result.TryGetProperty("value", out var value));
+            // MCPInvoke 1.3.3+ wraps results in MCP content schema, extract and parse the JSON
+            var contentText = ExtractContentText(result);
+            var valueJson = JsonDocument.Parse(contentText);
+            Assert.True(valueJson.RootElement.TryGetProperty("value", out var value));
             Assert.True(value.TryGetProperty("result", out var calcResult));
             Assert.Equal(50, calcResult.GetDouble());
         }

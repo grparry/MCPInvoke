@@ -38,6 +38,35 @@ namespace MCPInvoke.Tests.Services
                 _loggerMock.Object);
         }
 
+        /// <summary>
+        /// Helper method to extract the actual data from MCP content schema format
+        /// </summary>
+        private string ExtractContentText(JsonElement result)
+        {
+            // MCPInvoke 1.3.3+ wraps results in MCP content schema: {"content": [{"type": "text", "text": "stringified_json"}]}
+            if (result.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.Array)
+            {
+                var firstContent = content.EnumerateArray().FirstOrDefault();
+                if (firstContent.TryGetProperty("type", out var type) && type.GetString() == "text" &&
+                    firstContent.TryGetProperty("text", out var text))
+                {
+                    var textValue = text.GetString() ?? string.Empty;
+                    // The text contains JSON-stringified data, so we need to parse it back
+                    try
+                    {
+                        return JsonSerializer.Deserialize<string>(textValue) ?? string.Empty;
+                    }
+                    catch
+                    {
+                        // If it's not valid JSON string, return as-is
+                        return textValue;
+                    }
+                }
+            }
+            // Fallback for backward compatibility or non-content responses
+            return result.GetString() ?? string.Empty;
+        }
+
         [Fact]
         public void Constructor_NullServiceScopeFactory_ThrowsArgumentNullException()
         {
@@ -206,8 +235,9 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            // MCPInvoke returns the raw method result, not MCP-formatted content
-            Assert.Equal("Processed: Hello", result.GetString());
+            // MCPInvoke 1.3.3+ returns MCP content schema formatted results
+            var actualText = ExtractContentText(result);
+            Assert.Equal("Processed: Hello", actualText);
         }
 
         [Fact]
@@ -381,8 +411,9 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            // MCPInvoke returns the raw method result
-            Assert.Equal("Result: 84", result.GetString());
+            // MCPInvoke 1.3.3+ returns MCP content schema formatted results
+            var actualText = ExtractContentText(result);
+            Assert.Equal("Result: 84", actualText);
         }
 
         [Fact]
@@ -444,7 +475,7 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            var resultString = result.GetString();
+            var resultString = ExtractContentText(result);
             Assert.Contains("Complex: TestObject", resultString);
             Assert.Contains("Count: 42", resultString);
             Assert.Contains("Active: True", resultString);
@@ -452,14 +483,14 @@ namespace MCPInvoke.Tests.Services
         }
 
         [Fact]
-        public async Task ProcessRequestAsync_WorkflowExecutionRequest_ReplicatesBugScenario()
+        public async Task ProcessRequestAsync_BusinessProcessRequest_ReplicatesBugScenario()
         {
-            // Arrange - This test replicates the exact Workflow3ExecutionRequest scenario from the bug report
+            // Arrange - This test replicates the exact complex business request scenario from the bug report
             var testHandler = new TestToolHandler();
-            var methodInfo = typeof(TestToolHandler).GetMethod(nameof(TestToolHandler.ExecuteWorkflow))!;
+            var methodInfo = typeof(TestToolHandler).GetMethod(nameof(TestToolHandler.ExecuteBusinessProcess))!;
             
             var tool = new RegisteredTool(
-                "ExecuteWorkflow",
+                "ExecuteBusinessProcess",
                 methodInfo,
                 typeof(TestToolHandler),
                 new Dictionary<string, RegisteredTool.McpToolSchemaPropertyPlaceholder>
@@ -483,12 +514,12 @@ namespace MCPInvoke.Tests.Services
                 .Setup(factory => factory.CreateScope())
                 .Returns(serviceScopeMock.Object);
             
-            // Create a realistic workflow request that would have caused the original bug
-            var workflowRequest = new
+            // Create a realistic business process request that would have caused the original bug
+            var processRequest = new
             {
                 tenantId = 1,
                 customerId = 12345,
-                workflowName = "customer-insights",
+                processName = "data-processing",
                 version = "1.0",
                 shadowMode = false,
                 parameters = new Dictionary<string, object>
@@ -504,8 +535,8 @@ namespace MCPInvoke.Tests.Services
                 method = "tools/call",
                 @params = new
                 {
-                    name = "ExecuteWorkflow",
-                    arguments = new { request = workflowRequest }
+                    name = "ExecuteBusinessProcess",
+                    arguments = new { request = processRequest }
                 },
                 id = 8
             });
@@ -517,8 +548,8 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            var resultString = result.GetString();
-            Assert.Contains("Workflow: customer-insights", resultString);
+            var resultString = ExtractContentText(result);
+            Assert.Contains("Process: data-processing", resultString);
             Assert.Contains("Tenant 1", resultString);
             Assert.Contains("Customer 12345", resultString);
             Assert.Contains("Shadow: False", resultString);
@@ -592,7 +623,7 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            var resultString = result.GetString();
+            var resultString = ExtractContentText(result);
             Assert.Contains("Nested: MainObject", resultString);
             Assert.Contains("SubCount: 10", resultString);
             Assert.Contains("Items: 3", resultString);
@@ -648,7 +679,7 @@ namespace MCPInvoke.Tests.Services
             var responseJson = JsonDocument.Parse(response);
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
-            var resultString = result.GetString();
+            var resultString = ExtractContentText(result);
             Assert.Equal("Enum: TypeB", resultString);
         }
 
@@ -714,11 +745,76 @@ namespace MCPInvoke.Tests.Services
             Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
             
             // If our fix works, this should succeed even though the mapping type is wrong
-            var resultString = result.GetString();
+            var resultString = ExtractContentText(result);
             Assert.Contains("Complex: FixedObject", resultString);
             Assert.Contains("Count: 100", resultString);
             Assert.Contains("Active: False", resultString);
             Assert.Contains("Type: TypeA", resultString);
+        }
+
+        [Fact]
+        public async Task ProcessRequestAsync_AnyResult_ReturnsProperMcpContentSchema()
+        {
+            // Arrange - Test that all results follow MCP content schema format
+            var testHandler = new TestToolHandler();
+            var methodInfo = typeof(TestToolHandler).GetMethod(nameof(TestToolHandler.TestMethod))!;
+            
+            var tool = new RegisteredTool(
+                "TestMcpContentSchema",
+                methodInfo,
+                typeof(TestToolHandler),
+                new Dictionary<string, RegisteredTool.McpToolSchemaPropertyPlaceholder>
+                {
+                    ["message"] = new RegisteredTool.McpToolSchemaPropertyPlaceholder(typeof(string), true, null)
+                });
+            
+            _executionService.RegisterTool(tool);
+
+            var serviceProviderMock = new Mock<IServiceProvider>();
+            var serviceScopeMock = new Mock<IServiceScope>();
+            
+            serviceProviderMock
+                .Setup(sp => sp.GetService(typeof(TestToolHandler)))
+                .Returns(testHandler);
+            serviceScopeMock
+                .Setup(scope => scope.ServiceProvider)
+                .Returns(serviceProviderMock.Object);
+            _serviceScopeFactoryMock
+                .Setup(factory => factory.CreateScope())
+                .Returns(serviceScopeMock.Object);
+            
+            var jsonRequest = JsonSerializer.Serialize(new
+            {
+                jsonrpc = "2.0",
+                method = "tools/call",
+                @params = new
+                {
+                    name = "TestMcpContentSchema",
+                    arguments = new { message = "Test MCP Format" }
+                },
+                id = 1
+            });
+
+            // Act
+            var response = await _executionService.ProcessRequestAsync(jsonRequest);
+
+            // Assert
+            var responseJson = JsonDocument.Parse(response);
+            Assert.True(responseJson.RootElement.TryGetProperty("result", out var result));
+            
+            // Verify MCP content schema compliance
+            Assert.True(result.TryGetProperty("content", out var content));
+            Assert.Equal(JsonValueKind.Array, content.ValueKind);
+            
+            var contentArray = content.EnumerateArray().ToArray();
+            Assert.Single(contentArray); // Should have exactly one content item
+            
+            var contentItem = contentArray[0];
+            Assert.True(contentItem.TryGetProperty("type", out var type));
+            Assert.Equal("text", type.GetString());
+            
+            Assert.True(contentItem.TryGetProperty("text", out var text));
+            Assert.Equal("\"Processed: Test MCP Format\"", text.GetString()); // Should be JSON stringified
         }
     }
 
@@ -753,10 +849,10 @@ namespace MCPInvoke.Tests.Services
             return $"Enum: {enumValue}";
         }
 
-        // Method that mimics Workflow3ExecutionRequest
-        public string ExecuteWorkflow(WorkflowExecutionRequest request)
+        // Method that mimics complex business process execution request
+        public string ExecuteBusinessProcess(BusinessProcessRequest request)
         {
-            return $"Workflow: {request.WorkflowName} for Tenant {request.TenantId}, Customer {request.CustomerId}, Shadow: {request.ShadowMode}, Params: {request.Parameters?.Count ?? 0}";
+            return $"Process: {request.ProcessName} for Tenant {request.TenantId}, Customer {request.CustomerId}, Shadow: {request.ShadowMode}, Params: {request.Parameters?.Count ?? 0}";
         }
     }
 
@@ -789,12 +885,12 @@ namespace MCPInvoke.Tests.Services
         TypeC = 2
     }
 
-    // Replica of Workflow3ExecutionRequest to test the exact scenario from the bug report
-    public class WorkflowExecutionRequest
+    // Replica of complex business process request to test the exact scenario from the bug report
+    public class BusinessProcessRequest
     {
         public int TenantId { get; set; }
         public int CustomerId { get; set; }
-        public string WorkflowName { get; set; } = string.Empty;
+        public string ProcessName { get; set; } = string.Empty;
         public string Version { get; set; } = "";
         public bool ShadowMode { get; set; } = false;
         public Dictionary<string, object> Parameters { get; set; } = new();

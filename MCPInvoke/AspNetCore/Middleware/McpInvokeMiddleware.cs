@@ -54,7 +54,20 @@ namespace MCPInvoke.AspNetCore.Middleware
                 }
                 
                 // Log detailed request information
-                _logger.LogInformation("Received JSON-RPC request: {Request}", requestBody);
+                _logger.LogInformation("=== DETAILED MCP REQUEST ANALYSIS ===");
+                _logger.LogInformation("Request Method: {Method}", context.Request.Method);
+                _logger.LogInformation("Request Path: {Path}", context.Request.Path);
+                _logger.LogInformation("Content-Type: {ContentType}", context.Request.ContentType);
+                _logger.LogInformation("Content-Length: {ContentLength}", context.Request.ContentLength);
+                
+                // Log all headers
+                foreach (var header in context.Request.Headers)
+                {
+                    _logger.LogInformation("Header - {HeaderName}: {HeaderValue}", header.Key, string.Join(", ", header.Value.ToArray()));
+                }
+                
+                _logger.LogInformation("Raw Request Body: {Request}", requestBody);
+                _logger.LogInformation("Request Body Length: {Length}", requestBody?.Length ?? 0);
                 
                 try
                 {
@@ -68,7 +81,12 @@ namespace MCPInvoke.AspNetCore.Middleware
                     }
                     
                     // Log the response for debugging
-                    _logger.LogInformation("JSON-RPC response: {Response}", responseText);
+                    _logger.LogInformation("=== DETAILED MCP RESPONSE ANALYSIS ===");
+                    _logger.LogInformation("Response Status Code: {StatusCode}", context.Response.StatusCode);
+                    _logger.LogInformation("Response Content-Type: {ContentType}", context.Response.ContentType);
+                    _logger.LogInformation("Response Body: {Response}", responseText);
+                    _logger.LogInformation("Response Body Length: {Length}", responseText?.Length ?? 0);
+                    _logger.LogInformation("=== END MCP REQUEST/RESPONSE ANALYSIS ===");
                     
                     // Write the response
                     context.Response.ContentType = "application/json";

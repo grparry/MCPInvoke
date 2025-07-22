@@ -771,15 +771,21 @@ public class McpExecutionService
                 }
                 _logger.LogInformation("Method {MethodName} executed successfully.", toolName);
                 
-                // Ensure consistent handling of results, especially for arrays
-                // MCP client expects a specific result format
-                if (result != null && (result.GetType().IsArray || (result.GetType().IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(result.GetType()) && result.GetType() != typeof(string))))
+                // Claude Code CLI expects MCP responses to follow MCP content schema
+                // Format result as MCP content with type:"text" and stringified JSON data
+                if (result != null)
                 {
-                    _logger.LogInformation("Result is an array or collection. Wrapping in a compatible object format.");
-                    // Instead of using the array directly, wrap it in a container object
-                    // This helps Go clients that expect a specific structure
-                    result = new { items = result };
-                    _logger.LogInformation("Result wrapped as: {ResultType}", result.GetType().Name);
+                    _logger.LogInformation("Formatting result for Claude Code CLI MCP content schema compliance.");
+                    var jsonResult = JsonSerializer.Serialize(result, _jsonSerializerOptions);
+                    result = new { 
+                        content = new[] { 
+                            new { 
+                                type = "text", 
+                                text = jsonResult 
+                            } 
+                        } 
+                    };
+                    _logger.LogInformation("Wrapped result in MCP content schema format with type='text'.");
                 }
                 
                 return JsonSerializer.Serialize(new JsonRpcResponse(responseId, result: result), _jsonSerializerOptions);

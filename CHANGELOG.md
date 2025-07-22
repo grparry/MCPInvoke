@@ -1,9 +1,27 @@
 # MCPInvoke Changelog
 
+## [1.3.3] - 2025-07-22
+
+### Fixed
+- **Claude Code CLI Content Schema Compliance** - Fixed critical MCP response format to comply with Claude Code CLI content schema requirements
+  - MCPInvoke now properly formats all tool responses as `{"content": [{"type": "text", "text": "stringified_json_data"}]}`
+  - Resolves Zod validation errors from Claude Code CLI expecting specific MCP content format
+  - Fixed issues where responses returned as raw arrays instead of proper MCP content objects
+- **Universal MCP Client Compatibility** - Enhanced compatibility with all MCP clients that expect content schema format
+
+### Added
+- **Content Schema Formatting** - All tool execution results are now automatically wrapped in proper MCP content schema format
+- **Enhanced Logging** - Added logging for MCP content schema formatting process for better debugging
+
+### Technical Details
+- Updated `McpExecutionService.cs` lines 774-789 to wrap all results in MCP content format
+- Maintains full backward compatibility while adding standards compliance
+- Ensures seamless integration with Claude Code CLI and other MCP-compliant clients
+
 ## [1.3.2] - 2025-07-22
 
 ### Fixed
-- **Complex Object Deserialization** - Fixed critical bug where complex objects (like `Workflow3ExecutionRequest`) were failing with "Object of type 'System.Text.Json.JsonElement' cannot be converted to type 'X'" error
+- **Complex Object Deserialization** - Fixed critical bug where complex objects (like `BusinessProcessRequest`) were failing with "Object of type 'System.Text.Json.JsonElement' cannot be converted to type 'X'" error
   - MCPInvoke now properly uses the actual parameter type from method signatures instead of generic mapped types for complex object deserialization
   - Improved handling of nested objects, enums within complex objects, and type hierarchy scenarios
   - Enhanced logging to show when parameter type correction is applied for better debugging
