@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MCPInvoke", "MCPInvoke\MCPInvoke.csproj", "{F2470A10-E7B1-4459-914F-1840A1370B98}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MCPInvoke.Tests", "MCPInvoke.Tests\MCPInvoke.Tests.csproj", "{0E020FAA-ABF6-4A6F-BD11-1B4FF00E667C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SampleHost", "SampleHost\SampleHost.csproj", "{0E019DAE-661B-4213-AE91-0BF74613C173}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F2470A10-E7B1-4459-914F-1840A1370B98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F2470A10-E7B1-4459-914F-1840A1370B98}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F2470A10-E7B1-4459-914F-1840A1370B98}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F2470A10-E7B1-4459-914F-1840A1370B98}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E020FAA-ABF6-4A6F-BD11-1B4FF00E667C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E020FAA-ABF6-4A6F-BD11-1B4FF00E667C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E020FAA-ABF6-4A6F-BD11-1B4FF00E667C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E020FAA-ABF6-4A6F-BD11-1B4FF00E667C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0E019DAE-661B-4213-AE91-0BF74613C173}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E019DAE-661B-4213-AE91-0BF74613C173}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0E019DAE-661B-4213-AE91-0BF74613C173}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E019DAE-661B-4213-AE91-0BF74613C173}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

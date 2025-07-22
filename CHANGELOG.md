@@ -1,5 +1,27 @@
 # MCPInvoke Changelog
 
+## [1.3.2] - 2025-07-22
+
+### Fixed
+- **Complex Object Deserialization** - Fixed critical bug where complex objects (like `Workflow3ExecutionRequest`) were failing with "Object of type 'System.Text.Json.JsonElement' cannot be converted to type 'X'" error
+  - MCPInvoke now properly uses the actual parameter type from method signatures instead of generic mapped types for complex object deserialization
+  - Improved handling of nested objects, enums within complex objects, and type hierarchy scenarios
+  - Enhanced logging to show when parameter type correction is applied for better debugging
+- **Enhanced Error Reporting** - Added more detailed error messages for complex object deserialization failures with specific type information and raw JSON content
+
+### Added
+- **Comprehensive Complex Object Test Suite** - Added 6 new test methods specifically covering complex object deserialization scenarios:
+  - `ProcessRequestAsync_ComplexObject_DeserializesCorrectly` - Basic complex objects with enums
+  - `ProcessRequestAsync_WorkflowExecutionRequest_ReplicatesBugScenario` - Direct test of reported bug scenario
+  - `ProcessRequestAsync_NestedComplexObject_DeserializesCorrectly` - Nested object hierarchies
+  - `ProcessRequestAsync_EnumParameter_DeserializesCorrectly` - Enum parameter handling
+  - `ProcessRequestAsync_ComplexObjectTypeMapMismatch_UsesPararameterTypeNotMappedType` - Core fix validation
+
+### Technical Details
+- Fixed parameter binding logic in `McpExecutionService.cs` lines 592-603 to prioritize `paramInfo.ParameterType` over `targetType` for complex objects
+- This resolves scenarios where JSON schema mapping resulted in generic `object` types instead of specific strongly-typed classes
+- Maintains backward compatibility with all existing functionality
+
 ## [1.3.1] - 2025-07-17
 
 ### Added

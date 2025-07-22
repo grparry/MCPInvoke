@@ -13,6 +13,12 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.3.2
+
+- **Critical Complex Object Fix** - Fixed major bug where complex objects like `Workflow3ExecutionRequest` failed with JsonElement conversion errors
+- **Enhanced Test Coverage** - Added 6 new test methods specifically for complex object deserialization scenarios
+- **Improved Error Handling** - Better error messages and logging for complex object deserialization failures
+
 ## What's New in 1.3.1
 
 - **Aligned with MCPBuckle 1.5.1** - Updated to use the latest MCPBuckle version

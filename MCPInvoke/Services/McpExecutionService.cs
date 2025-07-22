@@ -589,15 +589,32 @@ public class McpExecutionService
                                         }
                                     }
                                     
+                                    // CRITICAL FIX: Use the actual parameter type from the method signature instead of the mapped type
+                                    // This ensures we deserialize to the correct type expected by the controller method
+                                    Type actualTargetType = paramInfo.ParameterType;
+                                    
+                                    _logger.LogInformation("      Using actual parameter type '{ActualType}' instead of mapped type '{MappedType}' for complex object deserialization", 
+                                                         actualTargetType.Name, targetType.Name);
+                                    
                                     // Attempt standard deserialization with our JsonSerializerOptions
-                                    // that has JsonStringEnumConverter registered
-                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
-                                    _logger.LogInformation("      Successfully bound complex parameter '{ParamName}'", paramNameFromReflection);
+                                    // that has JsonStringEnumConverter registered, using the actual parameter type
+                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), actualTargetType, _jsonSerializerOptions);
+                                    _logger.LogInformation("      Successfully bound complex parameter '{ParamName}' to actual type '{ActualType}'", 
+                                                         paramNameFromReflection, actualTargetType.Name);
                                 }
                                 catch (Exception complexEx)
                                 {
-                                    _logger.LogError(complexEx, "Failed to deserialize complex parameter '{ParamName}'", paramNameFromReflection);
-                                    throw;
+                                    _logger.LogError(complexEx, "Failed to deserialize complex parameter '{ParamName}' to type '{TargetType}'. Raw JSON: {RawJson}", 
+                                                   paramNameFromReflection, paramInfo.ParameterType.Name, paramValueJson.GetRawText());
+                                    
+                                    // Enhanced error message for complex object deserialization failures
+                                    var error = new JsonRpcError 
+                                    { 
+                                        Code = -32000, 
+                                        Message = $"Server error: Object of type 'System.Text.Json.JsonElement' cannot be converted to type '{paramInfo.ParameterType.FullName}'. " +
+                                                $"Parameter: '{paramNameFromReflection}'. Error: {complexEx.Message}" 
+                                    };
+                                    return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
                                 }
                             }
                             else
