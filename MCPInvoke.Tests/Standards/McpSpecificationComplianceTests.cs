@@ -377,15 +377,15 @@ namespace MCPInvoke.Tests.Standards
                 Properties = parameters.ToDictionary(p => p.Name, p => new McpPropertySchema
                 {
                     Type = p.Type,
-                    Description = p.Description,
+                    Description = p.Description ?? string.Empty,
                     Properties = p.Annotations?.ContainsKey("properties") == true 
-                        ? ConvertAnnotationProperties(p.Annotations["properties"]) 
+                        ? ConvertAnnotationProperties(p.Annotations!["properties"]) 
                         : null,
                     Items = p.Annotations?.ContainsKey("items") == true 
-                        ? ConvertAnnotationItems(p.Annotations["items"])
+                        ? ConvertAnnotationItems(p.Annotations!["items"])
                         : null,
                     Enum = p.Annotations?.ContainsKey("enum") == true
-                        ? ConvertAnnotationEnum(p.Annotations["enum"])
+                        ? ConvertAnnotationEnum(p.Annotations!["enum"])
                         : null
                 }),
                 Required = parameters.Where(p => p.IsRequired).Select(p => p.Name).ToList()
@@ -431,9 +431,9 @@ namespace MCPInvoke.Tests.Standards
             return "";
         }
 
-        private static Dictionary<string, object> CreateSampleArguments(IList<McpParameterInfo> parameters)
+        private static Dictionary<string, object?> CreateSampleArguments(IList<McpParameterInfo> parameters)
         {
-            var arguments = new Dictionary<string, object>();
+            var arguments = new Dictionary<string, object?>();
             
             foreach (var param in parameters.Where(p => p.IsRequired))
             {
@@ -445,7 +445,7 @@ namespace MCPInvoke.Tests.Standards
                     "boolean" => true,
                     "object" => new { },
                     "array" => new object[0],
-                    _ => null
+                    _ => (object?)null
                 };
             }
             

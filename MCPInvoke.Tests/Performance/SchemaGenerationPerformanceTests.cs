@@ -282,7 +282,7 @@ namespace MCPInvoke.Tests.Performance
             
             var routeParams = complexRouteTool.InputSchema.Where(p => 
                 p.Annotations?.ContainsKey("source") == true && 
-                p.Annotations["source"].ToString() == "route").ToList();
+                p.Annotations!["source"].ToString() == "route").ToList();
             
             Assert.True(routeParams.Count >= 3, "Should extract multiple route parameters");
             Assert.True(stopwatch.ElapsedMilliseconds < 200,

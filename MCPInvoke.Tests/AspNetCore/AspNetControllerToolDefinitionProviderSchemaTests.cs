@@ -57,7 +57,7 @@ namespace MCPInvoke.Tests.AspNetCore
             // Verify parameter source annotation
             var idParam = tool.InputSchema.First(p => p.Name == "id");
             Assert.True(idParam.Annotations?.ContainsKey("source"));
-            Assert.Equal("route", idParam.Annotations["source"]);
+            Assert.Equal("route", idParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -79,8 +79,8 @@ namespace MCPInvoke.Tests.AspNetCore
             // Both should be route parameters
             var tenantParam = tool.InputSchema.First(p => p.Name == "tenantId");
             var customerParam = tool.InputSchema.First(p => p.Name == "customerId");
-            Assert.Equal("route", tenantParam.Annotations?["source"]);
-            Assert.Equal("route", customerParam.Annotations?["source"]);
+            Assert.Equal("route", tenantParam.Annotations!["source"]);
+            Assert.Equal("route", customerParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -101,13 +101,13 @@ namespace MCPInvoke.Tests.AspNetCore
             var routeParam = tool.InputSchema.FirstOrDefault(p => p.Name == "stepDefinitionId");
             Assert.NotNull(routeParam);
             Assert.Equal("integer", routeParam.Type);
-            Assert.Equal("route", routeParam.Annotations?["source"]);
+            Assert.Equal("route", routeParam.Annotations!["source"]);
             
             // Should also have the body parameter
             var bodyParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
             Assert.NotNull(bodyParam);
             Assert.Equal("object", bodyParam.Type);
-            Assert.Equal("body", bodyParam.Annotations?["source"]);
+            Assert.Equal("body", bodyParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -128,7 +128,7 @@ namespace MCPInvoke.Tests.AspNetCore
             var idParam = tool.InputSchema.FirstOrDefault(p => p.Name == "id");
             Assert.NotNull(idParam);
             Assert.Equal("integer", idParam.Type);
-            Assert.Equal("route", idParam.Annotations?["source"]);
+            Assert.Equal("route", idParam.Annotations!["source"]);
         }
 
         #endregion
@@ -155,18 +155,18 @@ namespace MCPInvoke.Tests.AspNetCore
             
             // Should have detailed properties schema
             Assert.True(requestParam.Annotations?.ContainsKey("properties"));
-            var properties = requestParam.Annotations["properties"] as Dictionary<string, object>;
+            var properties = requestParam!.Annotations!["properties"] as Dictionary<string, object>;
             Assert.NotNull(properties);
             
             // Verify specific properties are mapped
             Assert.True(properties.ContainsKey("StepCode"));
             Assert.True(properties.ContainsKey("StepName"));
             Assert.True(properties.ContainsKey("Description"));
-            Assert.True(properties.ContainsKey("Definition"));
+            Assert.True(properties!.ContainsKey("Definition"));
             
             // Verify required properties list
             Assert.True(requestParam.Annotations?.ContainsKey("required"));
-            var required = requestParam.Annotations["required"] as List<string>;
+            var required = requestParam.Annotations!["required"] as List<string>;
             Assert.NotNull(required);
         }
 
@@ -185,18 +185,18 @@ namespace MCPInvoke.Tests.AspNetCore
             Assert.NotNull(tool);
             
             var requestParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
-            var properties = requestParam.Annotations["properties"] as Dictionary<string, object>;
+            var properties = requestParam!.Annotations!["properties"] as Dictionary<string, object>;
             
             // The "Definition" property should be a nested complex object
-            Assert.True(properties.ContainsKey("Definition"));
+            Assert.True(properties!.ContainsKey("Definition"));
             
-            var definitionProperty = properties["Definition"] as Dictionary<string, object>;
+            var definitionProperty = properties!["Definition"] as Dictionary<string, object>;
             Assert.NotNull(definitionProperty);
-            Assert.Equal("object", definitionProperty["type"]);
+            Assert.Equal("object", definitionProperty!["type"]);
             
             // Should have nested properties for ComposableStepDefinition
             Assert.True(definitionProperty.ContainsKey("properties"));
-            var nestedProperties = definitionProperty["properties"] as Dictionary<string, object>;
+            var nestedProperties = definitionProperty!["properties"] as Dictionary<string, object>;
             Assert.NotNull(nestedProperties);
             Assert.True(nestedProperties.ContainsKey("StepCode"));
             Assert.True(nestedProperties.ContainsKey("Processor"));
@@ -217,16 +217,16 @@ namespace MCPInvoke.Tests.AspNetCore
             Assert.NotNull(tool);
             
             var requestParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
-            var properties = requestParam.Annotations["properties"] as Dictionary<string, object>;
+            var properties = requestParam!.Annotations!["properties"] as Dictionary<string, object>;
             
             // The "Status" property should be an enum
-            Assert.True(properties.ContainsKey("Status"));
-            var statusProperty = properties["Status"] as Dictionary<string, object>;
+            Assert.True(properties!.ContainsKey("Status"));
+            var statusProperty = properties!["Status"] as Dictionary<string, object>;
             Assert.NotNull(statusProperty);
             
             // Should specify enum values
             Assert.True(statusProperty.ContainsKey("enum"));
-            var enumValues = statusProperty["enum"] as List<object>;
+            var enumValues = statusProperty!["enum"] as List<object>;
             Assert.NotNull(enumValues);
             Assert.Contains("Active", enumValues);
             Assert.Contains("Inactive", enumValues);
@@ -248,13 +248,13 @@ namespace MCPInvoke.Tests.AspNetCore
             Assert.NotNull(tool);
             
             var requestParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
-            var properties = requestParam.Annotations["properties"] as Dictionary<string, object>;
+            var properties = requestParam!.Annotations!["properties"] as Dictionary<string, object>;
             
             // The "Items" property should be an array
-            Assert.True(properties.ContainsKey("Items"));
-            var itemsProperty = properties["Items"] as Dictionary<string, object>;
+            Assert.True(properties!.ContainsKey("Items"));
+            var itemsProperty = properties!["Items"] as Dictionary<string, object>;
             Assert.NotNull(itemsProperty);
-            Assert.Equal("array", itemsProperty["type"]);
+            Assert.Equal("array", itemsProperty!["type"]);
             
             // Should have items schema for array elements
             Assert.True(itemsProperty.ContainsKey("items"));
@@ -280,7 +280,7 @@ namespace MCPInvoke.Tests.AspNetCore
             
             var bodyParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
             Assert.NotNull(bodyParam);
-            Assert.Equal("body", bodyParam.Annotations?["source"]);
+            Assert.Equal("body", bodyParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -299,7 +299,7 @@ namespace MCPInvoke.Tests.AspNetCore
             
             var queryParam = tool.InputSchema.FirstOrDefault(p => p.Name == "filter");
             Assert.NotNull(queryParam);
-            Assert.Equal("query", queryParam.Annotations?["source"]);
+            Assert.Equal("query", queryParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -318,7 +318,7 @@ namespace MCPInvoke.Tests.AspNetCore
             
             var headerParam = tool.InputSchema.FirstOrDefault(p => p.Name == "authorization");
             Assert.NotNull(headerParam);
-            Assert.Equal("header", headerParam.Annotations?["source"]);
+            Assert.Equal("header", headerParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -337,7 +337,7 @@ namespace MCPInvoke.Tests.AspNetCore
             
             var complexParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
             Assert.NotNull(complexParam);
-            Assert.Equal("body", complexParam.Annotations?["source"]);
+            Assert.Equal("body", complexParam.Annotations!["source"]);
         }
 
         [Fact]
@@ -356,7 +356,7 @@ namespace MCPInvoke.Tests.AspNetCore
             
             var primitiveParam = tool.InputSchema.FirstOrDefault(p => p.Name == "count");
             Assert.NotNull(primitiveParam);
-            Assert.Equal("query", primitiveParam.Annotations?["source"]);
+            Assert.Equal("query", primitiveParam.Annotations!["source"]);
         }
 
         #endregion
@@ -415,7 +415,7 @@ namespace MCPInvoke.Tests.AspNetCore
             // Convert to MCP JSON format (simulating what would be sent over MCP protocol)
             var mcpTool = new
             {
-                name = tool.Name,
+                name = tool!.Name,
                 description = tool.Description,
                 inputSchema = new
                 {

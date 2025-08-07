@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.4.1</Version> <!-- Bug fix release: Fixed all compilation warnings -->
+    <Version>1.4.2</Version> <!-- Bug fix release: Fixed all remaining compilation warnings -->
     <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
     <Company>MCPInvoke</Company> <!-- Or your name/org -->
-    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.4.1 is a bug fix release that eliminates all compilation warnings while maintaining 100% test success rate.</Description>
+    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.4.2 is a bug fix release that eliminates all compilation warnings while maintaining 100% test success rate.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
     <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>

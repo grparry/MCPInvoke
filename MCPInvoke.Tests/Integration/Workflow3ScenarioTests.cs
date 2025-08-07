@@ -79,13 +79,13 @@ namespace MCPInvoke.Tests.Integration
 
             // Verify complex object properties
             Assert.True(bodyParam.Annotations?.ContainsKey("properties"));
-            var properties = bodyParam.Annotations["properties"] as Dictionary<string, object>;
+            var properties = bodyParam.Annotations!["properties"] as Dictionary<string, object>;
             Assert.NotNull(properties);
             Assert.True(properties.ContainsKey("StepCode"));
             Assert.True(properties.ContainsKey("Definition"));
 
             // Verify nested object schema for ComposableStepDefinition
-            var definitionProp = properties["Definition"] as Dictionary<string, object>;
+            var definitionProp = properties!["Definition"] as Dictionary<string, object>;
             Assert.NotNull(definitionProp);
             Assert.Equal("object", definitionProp["type"]);
             Assert.True(definitionProp.ContainsKey("properties"));
@@ -239,13 +239,13 @@ namespace MCPInvoke.Tests.Integration
             Assert.NotNull(requestParam);
             Assert.Equal("object", requestParam.Type);
             
-            var properties = requestParam.Annotations["properties"] as Dictionary<string, object>;
-            Assert.True(properties.ContainsKey("WorkflowName"));
+            var properties = requestParam!.Annotations!["properties"] as Dictionary<string, object>;
+            Assert.True(properties!.ContainsKey("WorkflowName"));
             Assert.True(properties.ContainsKey("Steps"));
             
             // Verify array schema for steps
-            var stepsProperty = properties["Steps"] as Dictionary<string, object>;
-            Assert.Equal("array", stepsProperty["type"]);
+            var stepsProperty = properties!["Steps"] as Dictionary<string, object>;
+            Assert.Equal("array", stepsProperty!["type"]);
             Assert.True(stepsProperty.ContainsKey("items"));
             
             return Task.CompletedTask;
@@ -355,7 +355,7 @@ namespace MCPInvoke.Tests.Integration
                     // Route parameters must be identified
                     if (param.Annotations?.ContainsKey("source") == true)
                     {
-                        var source = param.Annotations["source"].ToString();
+                        var source = param.Annotations!["source"].ToString();
                         Assert.True(new[] { "route", "body", "query", "header" }.Contains(source),
                             $"Invalid parameter source '{source}' for {param.Name} in tool {tool.Name}");
                     }
@@ -378,7 +378,7 @@ namespace MCPInvoke.Tests.Integration
             // Convert to official MCP tool definition format
             var mcpToolDefinition = new
             {
-                name = updateTool.Name,
+                name = updateTool!.Name,
                 description = updateTool.Description,
                 inputSchema = new
                 {
@@ -447,7 +447,7 @@ namespace MCPInvoke.Tests.Integration
             var tool1 = tools1.FirstOrDefault(t => t.Name == "MockWorkflow3_UpdateStepDefinition");
             var tool2 = tools2.FirstOrDefault(t => t.Name == "MockWorkflow3_UpdateStepDefinition");
             
-            Assert.Equal(tool1.InputSchema.Count, tool2.InputSchema.Count);
+            Assert.Equal(tool1!.InputSchema.Count, tool2!.InputSchema.Count);
         }
 
         #endregion
