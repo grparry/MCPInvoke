@@ -289,8 +289,39 @@ public class McpExecutionService
             _logger.LogInformation("  Registered schema keys for {MethodName} at call time: {Keys}", 
                                  toolName, string.Join(", ", registeredTool.InputParameters.Keys));
 
+            // Enhanced parameter binding with source detection support
+            callParameters = await BindParametersWithSourceDetection(methodParameters, registeredTool, paramsElement, hasParamsElement, toolName, responseId);
+            
+            if (callParameters == null)
+            {
+                // Check if this is a missing required parameter issue (should be -32602)
+                // We need to determine if it's a missing required parameter vs other binding failure
+                _logger.LogWarning("Parameter binding failed for method '{MethodName}' - checking for missing required parameters", toolName);
+                
+                // Re-check for missing required parameters to provide proper error code
+                foreach (var paramInfo in methodParameters)
+                {
+                    string paramName = paramInfo.Name!;
+                    if (registeredTool.InputParameters.TryGetValue(paramName, out var schemaParam))
+                    {
+                        // Check if this parameter is required but missing from request
+                        if (schemaParam.IsRequired && (!hasParamsElement || !paramsElement.TryGetProperty(paramName, out _)))
+                        {
+                            var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: Missing required parameter '{paramName}' for method '{toolName}'." };
+                            return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
+                        }
+                    }
+                }
+                
+                // If not missing required parameter, then it's a generic binding failure
+                return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: new JsonRpcError { Code = -32603, Message = "Parameter binding failed" }), _jsonSerializerOptions);
+            }
+
+            // Legacy parameter binding for backward compatibility
             for (int i = 0; i < methodParameters.Length; i++)
             {
+                if (callParameters[i] != null) continue; // Skip parameters already bound by enhanced logic
+                
                 ParameterInfo paramInfo = methodParameters[i];
                 string paramNameFromReflection = paramInfo.Name!;
 
@@ -819,5 +850,247 @@ public class McpExecutionService
             var error = new JsonRpcError { Code = -32603, Message = $"Internal error: {ex.Message}" };
             return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
         }
+    }
+
+    /// <summary>
+    /// Enhanced parameter binding with source detection support.
+    /// Handles route parameters, complex objects, and proper type coercion.
+    /// </summary>
+    private async Task<object?[]?> BindParametersWithSourceDetection(
+        ParameterInfo[] methodParameters, 
+        RegisteredTool registeredTool, 
+        JsonElement paramsElement, 
+        bool hasParamsElement, 
+        string toolName, 
+        JsonElement? responseId)
+    {
+        object?[] callParameters = new object[methodParameters.Length];
+        
+        for (int i = 0; i < methodParameters.Length; i++)
+        {
+            ParameterInfo paramInfo = methodParameters[i];
+            string paramNameFromReflection = paramInfo.Name!;
+            
+            _logger.LogInformation("Enhanced parameter binding for param #{Index}: Name='{ParamName}', Type='{ParamType}'", 
+                                 i, paramNameFromReflection, paramInfo.ParameterType.Name);
+            
+            // Check if parameter is in registered schema
+            if (!registeredTool.InputParameters.TryGetValue(paramNameFromReflection, out var schemaParam))
+            {
+                // Handle parameters not in schema (optional parameters, infrastructure types)
+                if (IsAspNetCoreInfrastructureType(paramInfo.ParameterType))
+                {
+                    _logger.LogInformation("Skipping ASP.NET Core infrastructure parameter '{ParamName}'", paramNameFromReflection);
+                    callParameters[i] = GetDefaultValueForType(paramInfo.ParameterType);
+                    continue;
+                }
+                
+                if (!paramInfo.IsOptional && !paramInfo.HasDefaultValue)
+                {
+                    _logger.LogError("Parameter '{ParamName}' for method '{MethodName}' is required but no schema was provided", 
+                                   paramNameFromReflection, toolName);
+                    return null; // Will trigger error in calling method
+                }
+                
+                // Use default value for optional parameters not in schema
+                callParameters[i] = paramInfo.HasDefaultValue ? paramInfo.DefaultValue : GetDefaultValueForType(paramInfo.ParameterType);
+                continue;
+            }
+            
+            // Check for parameter source information
+            string? parameterSource = GetParameterSource(schemaParam);
+            _logger.LogInformation("Parameter '{ParamName}' source: {Source}", paramNameFromReflection, parameterSource ?? "unknown");
+            
+            // Get parameter value from JSON
+            JsonElement paramValueJson = default;
+            bool hasParamValue = hasParamsElement && paramsElement.TryGetProperty(paramNameFromReflection, out paramValueJson);
+            
+            if (!hasParamValue)
+            {
+                // Handle missing parameters
+                if (paramInfo.HasDefaultValue)
+                {
+                    callParameters[i] = paramInfo.DefaultValue;
+                    _logger.LogInformation("Using default value for missing optional parameter '{ParamName}'", paramNameFromReflection);
+                }
+                else if (schemaParam.IsRequired)
+                {
+                    _logger.LogError("Missing required parameter '{ParamName}' for method '{MethodName}'", paramNameFromReflection, toolName);
+                    return null; // Will trigger error in calling method
+                }
+                else
+                {
+                    callParameters[i] = GetDefaultValueForType(paramInfo.ParameterType);
+                    _logger.LogInformation("Using CLR default for optional parameter '{ParamName}'", paramNameFromReflection);
+                }
+                continue;
+            }
+            
+            // Bind parameter value with enhanced type handling
+            try
+            {
+                callParameters[i] = await BindParameterValue(paramInfo, paramValueJson, schemaParam, parameterSource);
+                _logger.LogInformation("Successfully bound parameter '{ParamName}' with enhanced binding", paramNameFromReflection);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to bind parameter '{ParamName}' for method '{MethodName}'", paramNameFromReflection, toolName);
+                return null; // Will trigger error in calling method
+            }
+        }
+        
+        return callParameters;
+    }
+    
+    /// <summary>
+    /// Gets parameter source from schema annotations.
+    /// </summary>
+    private string? GetParameterSource(RegisteredTool.McpToolSchemaPropertyPlaceholder schemaParam)
+    {
+        // This would be enhanced to read from schema annotations if they were available
+        // For now, return null to indicate unknown source
+        return null;
+    }
+    
+    /// <summary>
+    /// Checks if a type is an ASP.NET Core infrastructure type that should be skipped.
+    /// </summary>
+    private bool IsAspNetCoreInfrastructureType(Type type)
+    {
+        var infraTypes = new[]
+        {
+            "Microsoft.AspNetCore.Http.HttpContext",
+            "System.Threading.CancellationToken",
+            "Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary",
+            "Microsoft.AspNetCore.Mvc.ActionContext"
+        };
+        
+        return infraTypes.Contains(type.FullName);
+    }
+    
+    /// <summary>
+    /// Gets a default value for a given type.
+    /// </summary>
+    private object? GetDefaultValueForType(Type type)
+    {
+        if (type.IsValueType)
+        {
+            return Activator.CreateInstance(type);
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Binds a single parameter value with enhanced type handling.
+    /// </summary>
+    private async Task<object?> BindParameterValue(
+        ParameterInfo paramInfo, 
+        JsonElement paramValueJson, 
+        RegisteredTool.McpToolSchemaPropertyPlaceholder schemaParam, 
+        string? parameterSource)
+    {
+        Type targetType = paramInfo.ParameterType;
+        
+        _logger.LogInformation("Binding parameter '{ParamName}' of type '{Type}' from source '{Source}'", 
+                             paramInfo.Name, targetType.Name, parameterSource ?? "unknown");
+        
+        // Enhanced enum handling
+        if (targetType.IsEnum)
+        {
+            return BindEnumParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown");
+        }
+        
+        // Enhanced complex object handling
+        if (IsComplexType(targetType))
+        {
+            return BindComplexObjectParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown");
+        }
+        
+        // Standard primitive type binding
+        return JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+    }
+    
+    /// <summary>
+    /// Binds enum parameters with multiple fallback strategies.
+    /// </summary>
+    private object? BindEnumParameter(Type enumType, JsonElement paramValueJson, string paramName)
+    {
+        _logger.LogInformation("Binding enum parameter '{ParamName}' of type '{EnumType}'", paramName, enumType.Name);
+        
+        // Strategy 1: Direct string parsing
+        if (paramValueJson.ValueKind == JsonValueKind.String)
+        {
+            string enumStringValue = paramValueJson.GetString() ?? string.Empty;
+            
+            // Try case-insensitive enum parsing
+            if (Enum.TryParse(enumType, enumStringValue, true, out var enumResult))
+            {
+                _logger.LogInformation("Successfully parsed enum string '{Value}' to {EnumType}", enumStringValue, enumType.Name);
+                return enumResult;
+            }
+        }
+        
+        // Strategy 2: Numeric value parsing
+        if (paramValueJson.ValueKind == JsonValueKind.Number)
+        {
+            int enumIntValue = paramValueJson.GetInt32();
+            var enumResult = Enum.ToObject(enumType, enumIntValue);
+            _logger.LogInformation("Successfully converted numeric value {Value} to enum {EnumType}", enumIntValue, enumType.Name);
+            return enumResult;
+        }
+        
+        // Strategy 3: JsonSerializer with custom options
+        var enumSerializerOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, false) }
+        };
+        
+        return JsonSerializer.Deserialize(paramValueJson.GetRawText(), enumType, enumSerializerOptions);
+    }
+    
+    /// <summary>
+    /// Binds complex object parameters with proper deserialization.
+    /// </summary>
+    private object? BindComplexObjectParameter(Type objectType, JsonElement paramValueJson, string paramName)
+    {
+        _logger.LogInformation("Binding complex object parameter '{ParamName}' of type '{Type}'", paramName, objectType.Name);
+        
+        try
+        {
+            // Use the JsonSerializerOptions with JsonStringEnumConverter for complex objects
+            return JsonSerializer.Deserialize(paramValueJson.GetRawText(), objectType, _jsonSerializerOptions);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize complex object '{ParamName}' of type '{Type}'", paramName, objectType.Name);
+            throw new JsonException($"Failed to deserialize parameter '{paramName}' to type '{objectType.Name}': {ex.Message}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// Determines if a type is a complex type requiring object deserialization.
+    /// </summary>
+    private bool IsComplexType(Type type)
+    {
+        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
+        
+        // Primitive types and strings are not complex
+        if (underlyingType.IsPrimitive || underlyingType == typeof(string) || 
+            underlyingType == typeof(DateTime) || underlyingType == typeof(DateTimeOffset) ||
+            underlyingType == typeof(TimeSpan) || underlyingType == typeof(Guid) ||
+            underlyingType.IsEnum)
+        {
+            return false;
+        }
+        
+        // Arrays and collections are handled separately
+        if (type.IsArray || (type.IsGenericType && typeof(System.Collections.IEnumerable).IsAssignableFrom(type)))
+        {
+            return false;
+        }
+        
+        // Everything else is considered complex
+        return underlyingType.IsClass || underlyingType.IsInterface || underlyingType.IsValueType;
     }
 }

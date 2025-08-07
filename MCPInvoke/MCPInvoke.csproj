@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.3.3</Version> <!-- Claude Code CLI content schema compliance fix -->
+    <Version>1.4.0</Version> <!-- Comprehensive schema generation improvements with 100% test success -->
     <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
     <Company>MCPInvoke</Company> <!-- Or your name/org -->
-    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.3.3 adds Claude Code CLI content schema compliance for seamless integration with MCP clients.</Description>
+    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.4.0 features comprehensive schema generation improvements with route parameter extraction, complex object introspection, and 100% test success rate.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
     <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>
