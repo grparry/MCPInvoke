@@ -28,6 +28,7 @@ namespace MCPInvoke.AspNetCore
         /// Initializes a new instance of the <see cref="AspNetControllerToolDefinitionProvider"/> class.
         /// </summary>
         /// <param name="serviceProvider">The service provider for resolving dependencies.</param>
+        /// <param name="logger">The logger instance for diagnostic output.</param>
         /// <param name="options">Configuration options for tool discovery.</param>
         /// <param name="assemblies">Assemblies to scan for controllers. If null, only the entry assembly is scanned.</param>
         public AspNetControllerToolDefinitionProvider(
@@ -42,7 +43,12 @@ namespace MCPInvoke.AspNetCore
             _assemblies = assemblies ?? new[] { Assembly.GetEntryAssembly()! };
         }
 
-        // Overload for backward compatibility
+        /// <summary>
+        /// Initializes a new instance of the <see cref="AspNetControllerToolDefinitionProvider"/> class with default logging.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider for resolving dependencies.</param>
+        /// <param name="options">Configuration options for tool discovery.</param>
+        /// <param name="assemblies">Assemblies to scan for controllers. If null, only the entry assembly is scanned.</param>
         public AspNetControllerToolDefinitionProvider(
             IServiceProvider serviceProvider, 
             AspNetControllerToolOptions options,

@@ -282,15 +282,13 @@ public class McpExecutionService
             }
 
             ParameterInfo[] methodParameters = registeredTool.Method.GetParameters();
-            object?[] callParameters = new object[methodParameters.Length];
-
             _logger.LogInformation("  Attempting to bind parameters for {MethodName}. C# method expects {ParamCount} parameters.", 
                                  toolName, methodParameters.Length);
             _logger.LogInformation("  Registered schema keys for {MethodName} at call time: {Keys}", 
                                  toolName, string.Join(", ", registeredTool.InputParameters.Keys));
 
             // Enhanced parameter binding with source detection support
-            callParameters = await BindParametersWithSourceDetection(methodParameters, registeredTool, paramsElement, hasParamsElement, toolName, responseId);
+            object?[]? callParameters = await BindParametersWithSourceDetection(methodParameters, registeredTool, paramsElement, hasParamsElement, toolName, responseId);
             
             if (callParameters == null)
             {
@@ -320,7 +318,7 @@ public class McpExecutionService
             // Legacy parameter binding for backward compatibility
             for (int i = 0; i < methodParameters.Length; i++)
             {
-                if (callParameters[i] != null) continue; // Skip parameters already bound by enhanced logic
+                if (callParameters![i] != null) continue; // Skip parameters already bound by enhanced logic
                 
                 ParameterInfo paramInfo = methodParameters[i];
                 string paramNameFromReflection = paramInfo.Name!;
@@ -341,11 +339,11 @@ public class McpExecutionService
                     {
                         if (paramInfo.HasDefaultValue)
                         {
-                            callParameters[i] = paramInfo.DefaultValue;
+                            callParameters![i] = paramInfo.DefaultValue;
                             _logger.LogInformation("      Using C# default value for optional param '{ParamName}' as it's not in schema or RPC params.", paramNameFromReflection);
                             continue;
                         }
-                        callParameters[i] = paramInfo.ParameterType.IsValueType ? Activator.CreateInstance(paramInfo.ParameterType) : null;
+                        callParameters![i] = paramInfo.ParameterType.IsValueType ? Activator.CreateInstance(paramInfo.ParameterType)! : null;
                         _logger.LogInformation("      Using CLR default for optional param '{ParamName}' as it's not in schema or RPC params and has no C# default.", paramNameFromReflection);
                         continue;
                     }
@@ -361,7 +359,7 @@ public class McpExecutionService
                     // This takes precedence over the schema definition
                     if (paramInfo.HasDefaultValue) 
                     {
-                        callParameters[i] = paramInfo.DefaultValue;
+                        callParameters![i] = paramInfo.DefaultValue;
                         _logger.LogInformation("      Using default value for optional param '{ParamName}' which was not provided in request.", paramNameFromReflection);
                     }
                     // Only treat as required if it doesn't have a default value AND the schema marks it as required
@@ -372,7 +370,7 @@ public class McpExecutionService
                     }
                     else 
                     {
-                        callParameters[i] = paramInfo.ParameterType.IsValueType ? Activator.CreateInstance(paramInfo.ParameterType) : null;
+                        callParameters![i] = paramInfo.ParameterType.IsValueType ? Activator.CreateInstance(paramInfo.ParameterType)! : null;
                         _logger.LogInformation("      Using CLR default for '{ParamName}'.", paramNameFromReflection);
                     }
                 }
@@ -467,7 +465,7 @@ public class McpExecutionService
                                     string jsonString = $"\"{enumStringValue}\"";
                                     _logger.LogInformation("      Using specifically formatted JSON string: {JsonString}", jsonString);
                                     
-                                    callParameters[i] = JsonSerializer.Deserialize(jsonString, targetType, enumSerializerOptions);
+                                    callParameters![i] = JsonSerializer.Deserialize(jsonString, targetType, enumSerializerOptions) ?? GetDefaultValueForType(targetType);
                                     _logger.LogInformation("      SUCCESS: Bound enum parameter '{ParamName}' using enhanced string deserialization with JsonStringEnumConverter", 
                                                           paramNameFromReflection);
                                     continue; // Continue to next parameter if success
@@ -483,7 +481,7 @@ public class McpExecutionService
                                 try
                                 {
                                     _logger.LogInformation("      STRATEGY 1: Direct deserialization with JsonStringEnumConverter");
-                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, enumSerializerOptions);
+                                    callParameters![i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, enumSerializerOptions) ?? GetDefaultValueForType(targetType);
                                     _logger.LogInformation("      SUCCESS: Bound enum parameter '{ParamName}' using direct deserialization with JsonStringEnumConverter", 
                                                           paramNameFromReflection);
                                     continue; // Continue to next parameter if success
@@ -504,7 +502,7 @@ public class McpExecutionService
                                 try
                                 {
                                     _logger.LogInformation("      STRATEGY 2A: Direct Enum.Parse with case-insensitive matching");
-                                    callParameters[i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
+                                    callParameters![i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
                                     _logger.LogInformation("      SUCCESS: Bound enum '{ParamName}' with case-insensitive match", paramNameFromReflection);
                                     continue; // Continue to next parameter if success
                                 }
@@ -525,7 +523,7 @@ public class McpExecutionService
                                     {
                                         _logger.LogInformation("      SUCCESS: Found case-insensitive enum name match: '{Original}' → '{Match}'", 
                                                              enumStringValue, caseInsensitiveMatch);
-                                        callParameters[i] = Enum.Parse(targetType, caseInsensitiveMatch);
+                                        callParameters![i] = Enum.Parse(targetType, caseInsensitiveMatch);
                                         continue; // Continue to next parameter if success
                                     }
                                     _logger.LogWarning("      STRATEGY 3 FAILED: No matching enum name found");
@@ -543,7 +541,7 @@ public class McpExecutionService
                                     {
                                         _logger.LogInformation("      Converting string '{Value}' to numeric enum value {IntValue}", 
                                                            enumStringValue, enumIntValue);
-                                        callParameters[i] = Enum.ToObject(targetType, enumIntValue);
+                                        callParameters![i] = Enum.ToObject(targetType, enumIntValue);
                                         continue; // Continue to next parameter if success
                                     }
                                     _logger.LogWarning("      STRATEGY 4 FAILED: String is not a valid numeric value");
@@ -563,7 +561,7 @@ public class McpExecutionService
                                     
                                     // For all enums, just convert the number to the enum regardless of JsonStringEnumConverter
                                     // This simplifies the logic and is more reliable
-                                    callParameters[i] = Enum.ToObject(targetType, enumIntValue);
+                                    callParameters![i] = Enum.ToObject(targetType, enumIntValue);
                                     _logger.LogInformation("      SUCCESS: Bound enum '{ParamName}' with numeric value {Value}", 
                                                          paramNameFromReflection, enumIntValue);
                                     continue; // Continue to next parameter if success
@@ -577,7 +575,7 @@ public class McpExecutionService
                             // Final fallback: Use standard deserialization
                             _logger.LogWarning("      ALL STRATEGIES FAILED! Fallback to default deserializer for parameter '{ParamName}'", 
                                               paramNameFromReflection);
-                            callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+                            callParameters![i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions) ?? GetDefaultValueForType(targetType);
                         }
                         else
                         {
@@ -608,7 +606,7 @@ public class McpExecutionService
                                             // Try Enum.Parse with the string value
                                             try 
                                             {
-                                                callParameters[i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
+                                                callParameters![i] = Enum.Parse(targetType, enumStringValue, ignoreCase: true);
                                                 _logger.LogInformation("      Successfully parsed enum string value '{EnumValue}' to {EnumType}", 
                                                                      enumStringValue, targetType.Name);
                                                 continue;
@@ -629,7 +627,7 @@ public class McpExecutionService
                                     
                                     // Attempt standard deserialization with our JsonSerializerOptions
                                     // that has JsonStringEnumConverter registered, using the actual parameter type
-                                    callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), actualTargetType, _jsonSerializerOptions);
+                                    callParameters![i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), actualTargetType, _jsonSerializerOptions) ?? GetDefaultValueForType(actualTargetType);
                                     _logger.LogInformation("      Successfully bound complex parameter '{ParamName}' to actual type '{ActualType}'", 
                                                          paramNameFromReflection, actualTargetType.Name);
                                 }
@@ -651,7 +649,7 @@ public class McpExecutionService
                             else
                             {
                                 // Standard deserialization for simple non-enum types
-                                callParameters[i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+                                callParameters![i] = JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions) ?? GetDefaultValueForType(targetType);
                                 _logger.LogInformation("      Successfully bound '{ParamName}' from RPC params.", paramNameFromReflection);
                             }
                         }
@@ -881,7 +879,7 @@ public class McpExecutionService
                 if (IsAspNetCoreInfrastructureType(paramInfo.ParameterType))
                 {
                     _logger.LogInformation("Skipping ASP.NET Core infrastructure parameter '{ParamName}'", paramNameFromReflection);
-                    callParameters[i] = GetDefaultValueForType(paramInfo.ParameterType);
+                    callParameters![i] = GetDefaultValueForType(paramInfo.ParameterType);
                     continue;
                 }
                 
@@ -893,7 +891,7 @@ public class McpExecutionService
                 }
                 
                 // Use default value for optional parameters not in schema
-                callParameters[i] = paramInfo.HasDefaultValue ? paramInfo.DefaultValue : GetDefaultValueForType(paramInfo.ParameterType);
+                callParameters![i] = paramInfo.HasDefaultValue ? paramInfo.DefaultValue : GetDefaultValueForType(paramInfo.ParameterType);
                 continue;
             }
             
@@ -910,7 +908,7 @@ public class McpExecutionService
                 // Handle missing parameters
                 if (paramInfo.HasDefaultValue)
                 {
-                    callParameters[i] = paramInfo.DefaultValue;
+                    callParameters![i] = paramInfo.DefaultValue;
                     _logger.LogInformation("Using default value for missing optional parameter '{ParamName}'", paramNameFromReflection);
                 }
                 else if (schemaParam.IsRequired)
@@ -920,7 +918,7 @@ public class McpExecutionService
                 }
                 else
                 {
-                    callParameters[i] = GetDefaultValueForType(paramInfo.ParameterType);
+                    callParameters![i] = GetDefaultValueForType(paramInfo.ParameterType);
                     _logger.LogInformation("Using CLR default for optional parameter '{ParamName}'", paramNameFromReflection);
                 }
                 continue;
@@ -929,7 +927,7 @@ public class McpExecutionService
             // Bind parameter value with enhanced type handling
             try
             {
-                callParameters[i] = await BindParameterValue(paramInfo, paramValueJson, schemaParam, parameterSource);
+                callParameters![i] = await BindParameterValue(paramInfo, paramValueJson, schemaParam, parameterSource);
                 _logger.LogInformation("Successfully bound parameter '{ParamName}' with enhanced binding", paramNameFromReflection);
             }
             catch (Exception ex)
@@ -983,7 +981,7 @@ public class McpExecutionService
     /// <summary>
     /// Binds a single parameter value with enhanced type handling.
     /// </summary>
-    private async Task<object?> BindParameterValue(
+    private Task<object?> BindParameterValue(
         ParameterInfo paramInfo, 
         JsonElement paramValueJson, 
         RegisteredTool.McpToolSchemaPropertyPlaceholder schemaParam, 
@@ -997,17 +995,17 @@ public class McpExecutionService
         // Enhanced enum handling
         if (targetType.IsEnum)
         {
-            return BindEnumParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown");
+            return Task.FromResult(BindEnumParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown"));
         }
         
         // Enhanced complex object handling
         if (IsComplexType(targetType))
         {
-            return BindComplexObjectParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown");
+            return Task.FromResult(BindComplexObjectParameter(targetType, paramValueJson, paramInfo.Name ?? "unknown"));
         }
         
         // Standard primitive type binding
-        return JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions);
+        return Task.FromResult(JsonSerializer.Deserialize(paramValueJson.GetRawText(), targetType, _jsonSerializerOptions));
     }
     
     /// <summary>

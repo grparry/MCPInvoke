@@ -46,7 +46,7 @@ namespace MCPInvoke.Tests.Integration
         #region Workflow3_UpdateStepDefinition Scenario Tests
 
         [Fact]
-        public async Task Workflow3_UpdateStepDefinition_CompleteScenario_GeneratesCorrectSchema()
+        public Task Workflow3_UpdateStepDefinition_CompleteScenario_GeneratesCorrectSchema()
         {
             // Arrange - Replicate the exact failing scenario
             var controller = new MockWorkflow3Controller();
@@ -89,6 +89,8 @@ namespace MCPInvoke.Tests.Integration
             Assert.NotNull(definitionProp);
             Assert.Equal("object", definitionProp["type"]);
             Assert.True(definitionProp.ContainsKey("properties"));
+            
+            return Task.CompletedTask;
         }
 
         [Fact]
@@ -219,7 +221,7 @@ namespace MCPInvoke.Tests.Integration
         #region Workflow3_CreateWorkflowDefinition Scenario Tests
 
         [Fact]
-        public async Task Workflow3_CreateWorkflowDefinition_ComplexNestedObjects_GeneratesSchema()
+        public Task Workflow3_CreateWorkflowDefinition_ComplexNestedObjects_GeneratesSchema()
         {
             // Arrange
             var controller = new MockWorkflow3Controller();
@@ -245,6 +247,8 @@ namespace MCPInvoke.Tests.Integration
             var stepsProperty = properties["Steps"] as Dictionary<string, object>;
             Assert.Equal("array", stepsProperty["type"]);
             Assert.True(stepsProperty.ContainsKey("items"));
+            
+            return Task.CompletedTask;
         }
 
         [Fact]
@@ -360,7 +364,7 @@ namespace MCPInvoke.Tests.Integration
         }
 
         [Fact]
-        public async Task Workflow3_McpProtocol_MatchesOfficialSpecification()
+        public Task Workflow3_McpProtocol_MatchesOfficialSpecification()
         {
             // Arrange - Verify generated schemas match MCP specification format
             var controller = new MockWorkflow3Controller();
@@ -402,6 +406,8 @@ namespace MCPInvoke.Tests.Integration
             var deserialized = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
             Assert.NotNull(deserialized);
             Assert.True(deserialized.ContainsKey("inputSchema"));
+            
+            return Task.CompletedTask;
         }
 
         #endregion

@@ -72,12 +72,12 @@ namespace MCPInvoke.AspNetCore.Middleware
                 try
                 {
                     // First check for special MCP protocol methods
-                    string responseText = await HandleSpecialMcpMethodsAsync(requestBody);
+                    string? responseText = await HandleSpecialMcpMethodsAsync(requestBody ?? string.Empty);
                     
                     if (responseText == null)
                     {
                         // Not a special method, process normally using the execution service
-                        responseText = await _executionService.ProcessRequestAsync(requestBody);
+                        responseText = await _executionService.ProcessRequestAsync(requestBody ?? string.Empty);
                     }
                     
                     // Log the response for debugging
@@ -90,7 +90,7 @@ namespace MCPInvoke.AspNetCore.Middleware
                     
                     // Write the response
                     context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsync(responseText);
+                    await context.Response.WriteAsync(responseText ?? string.Empty);
                     return;
                 }
                 catch (Exception ex)

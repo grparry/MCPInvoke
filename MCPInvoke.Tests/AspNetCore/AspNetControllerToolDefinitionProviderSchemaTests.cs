@@ -436,8 +436,8 @@ namespace MCPInvoke.Tests.AspNetCore
             
             // Should be valid JSON that can be parsed back
             var parsed = System.Text.Json.JsonDocument.Parse(json);
-            Assert.NotNull(parsed.RootElement.GetProperty("name"));
-            Assert.NotNull(parsed.RootElement.GetProperty("inputSchema"));
+            Assert.True(parsed.RootElement.TryGetProperty("name", out _));
+            Assert.True(parsed.RootElement.TryGetProperty("inputSchema", out _));
         }
 
         private static bool IsValidMcpType(string type)
