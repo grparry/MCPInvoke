@@ -1,5 +1,21 @@
 # MCPInvoke Changelog
 
+## [1.4.3] - 2025-08-07
+
+### Enhancements
+- **MCPBuckle 1.6.1 Integration** - Updated dependency from MCPBuckle 1.6.0 to 1.6.1 for enhanced stability and circular reference protection
+- **Circular Reference Protection** - Prevents stack overflow errors when processing complex object schemas with self-referencing or mutually-referencing types
+- **Enhanced Schema Reliability** - Improved robustness of complex object schema generation for production environments
+
+### Fixed
+- **Stack Overflow Prevention** - Resolved potential stack overflow issues in complex object schema generation through MCPBuckle 1.6.1 circular reference detection
+- **Schema Generation Stability** - Enhanced stability when processing deeply nested or self-referencing object structures
+
+### Technical Details
+- Updated `MCPInvoke.csproj` to reference MCPBuckle 1.6.1
+- All 103 tests continue to pass with updated dependency
+- Maintains full backward compatibility while adding enhanced stability
+
 ## [1.4.0] - 2025-08-07
 
 ### Major Enhancements

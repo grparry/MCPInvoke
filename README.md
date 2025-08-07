@@ -13,6 +13,13 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.4.3
+
+- **MCPBuckle 1.6.1 Integration** - Updated to use MCPBuckle 1.6.1 with circular reference protection and enhanced stability
+- **Circular Reference Protection** - Prevents stack overflow errors when processing complex object schemas with self-referencing or mutually-referencing types
+- **Enhanced Schema Reliability** - Improved robustness of complex object schema generation for production use
+- **Full Test Suite Validation** - All 103 tests passing with the updated dependency
+
 ## What's New in 1.4.0
 
 - **Comprehensive Schema Generation Overhaul** - Complete redesign of MCP tool definition schema generation achieving 100% test success (103/103 tests)
