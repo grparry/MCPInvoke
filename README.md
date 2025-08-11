@@ -13,6 +13,22 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 1.5.0
+
+### 🚀 Major Integration Update - MCPBuckle 1.7.0
+
+- **Updated to MCPBuckle 1.7.0** - Integrates critical fixes for complex parameter handling with full backward compatibility
+- **[FromQuery] Complex Object Support** - Now correctly handles complex objects with `[FromQuery]` attribute, properly classifying them as "query" source instead of "body"
+- **Inheritance Chain Property Walking** - Complete base class property inclusion in MCP tool definitions - all base class properties (like `Provider`, `ModelName`, `PromptVersion`) now appear correctly
+- **LLM Prompt Management APIs** - Enhanced support for complex prompt management scenarios with inheritance-based request models
+- **106 Total Tests Pass** - All existing and new tests pass, including 3 new integration tests validating the MCPBuckle 1.7.0 fixes
+
+### 🔧 Enhanced Schema Generation
+
+- **Real-World API Support** - Complex query parameters with inheritance properly expanded with required validation attributes propagated across inheritance chains
+- **Complete Parameter Schemas** - Both fixes work together to provide comprehensive parameter expansion for inheritance-aware processing
+- **Seamless Upgrade** - Drop-in replacement for previous MCPInvoke versions with 100% backward compatibility
+
 ## What's New in 1.4.3
 
 - **MCPBuckle 1.6.1 Integration** - Updated to use MCPBuckle 1.6.1 with circular reference protection and enhanced stability

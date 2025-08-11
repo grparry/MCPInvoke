@@ -359,6 +359,92 @@ namespace MCPInvoke.Tests.AspNetCore
             Assert.Equal("query", primitiveParam.Annotations!["source"]);
         }
 
+        [Fact]
+        public void GetToolDefinitions_FromQueryComplexObject_DetectsQuerySource()
+        {
+            // Arrange - This tests the critical [FromQuery] complex object fix
+            _serviceProviderMock.Setup(sp => sp.GetService(typeof(ParameterSourceController)))
+                .Returns(new ParameterSourceController());
+
+            // Act
+            var tools = _provider.GetToolDefinitions();
+            var tool = tools.FirstOrDefault(t => t.Name == "ParameterSource_ComplexQueryParam");
+
+            // Assert
+            Assert.NotNull(tool);
+            
+            // Before the fix, complex objects with [FromQuery] were incorrectly classified as "body"
+            // After the fix, they should be correctly classified as "query"
+            var complexQueryParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
+            Assert.NotNull(complexQueryParam);
+            Assert.Equal("query", complexQueryParam.Annotations!["source"]);
+            Assert.Equal("object", complexQueryParam.Type);
+        }
+
+        [Fact]
+        public void GetToolDefinitions_InheritedProperties_IncludesBaseClassProperties()
+        {
+            // Arrange - This tests the inheritance chain walking fix
+            _serviceProviderMock.Setup(sp => sp.GetService(typeof(InheritanceTestController)))
+                .Returns(new InheritanceTestController());
+
+            // Act
+            var tools = _provider.GetToolDefinitions();
+            var tool = tools.FirstOrDefault(t => t.Name == "InheritanceTest_ProcessInheritedRequest");
+
+            // Assert
+            Assert.NotNull(tool);
+            
+            var requestParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
+            Assert.NotNull(requestParam);
+            Assert.NotNull(requestParam.Properties);
+            
+            // Before the fix, base class properties were missing
+            // After the fix, should include both base and derived properties
+            Assert.True(requestParam.Properties.ContainsKey("Provider"), "Should include base class property 'Provider'");
+            Assert.True(requestParam.Properties.ContainsKey("ModelName"), "Should include base class property 'ModelName'");
+            Assert.True(requestParam.Properties.ContainsKey("PromptVersion"), "Should include base class property 'PromptVersion'");
+            
+            // Should also include derived properties
+            Assert.True(requestParam.Properties.ContainsKey("PromptType"), "Should include derived class property 'PromptType'");
+            Assert.True(requestParam.Properties.ContainsKey("TenantId"), "Should include derived class property 'TenantId'");
+            
+            // Verify required properties include both base and derived
+            Assert.NotNull(requestParam.Required);
+            Assert.Contains("Provider", requestParam.Required);
+            Assert.Contains("ModelName", requestParam.Required);
+            Assert.Contains("PromptVersion", requestParam.Required);
+            Assert.Contains("PromptType", requestParam.Required);
+            Assert.Contains("TenantId", requestParam.Required);
+        }
+
+        [Fact]
+        public void GetToolDefinitions_FromQueryWithInheritance_BothFixesWorkTogether()
+        {
+            // Arrange - This tests both fixes working in combination
+            _serviceProviderMock.Setup(sp => sp.GetService(typeof(InheritanceTestController)))
+                .Returns(new InheritanceTestController());
+
+            // Act
+            var tools = _provider.GetToolDefinitions();
+            var tool = tools.FirstOrDefault(t => t.Name == "InheritanceTest_ComplexQueryWithInheritance");
+
+            // Assert
+            Assert.NotNull(tool);
+            
+            var requestParam = tool.InputSchema.FirstOrDefault(p => p.Name == "request");
+            Assert.NotNull(requestParam);
+            
+            // Level 1 fix: Should be detected as query source despite being complex object
+            Assert.Equal("query", requestParam.Annotations!["source"]);
+            Assert.Equal("object", requestParam.Type);
+            
+            // Level 2 fix: Should include inherited properties
+            Assert.NotNull(requestParam.Properties);
+            Assert.True(requestParam.Properties.ContainsKey("Provider"), "Should include base class properties");
+            Assert.True(requestParam.Properties.ContainsKey("PromptType"), "Should include derived class properties");
+        }
+
         #endregion
 
         #region MCP Specification Compliance Tests
@@ -541,6 +627,29 @@ namespace MCPInvoke.Tests.AspNetCore
         {
             return Ok("Inferred query");
         }
+
+        [HttpGet("complex-query")]
+        public IActionResult ComplexQueryParam([FromQuery] TestUpdateRequest request)
+        {
+            return Ok("Complex query param");
+        }
+    }
+
+    [ApiController]
+    [Route("api/inheritance-test")]
+    public class InheritanceTestController : ControllerBase
+    {
+        [HttpPost("process-inherited")]
+        public IActionResult ProcessInheritedRequest([FromBody] ExtendedTestRequest request)
+        {
+            return Ok("Processed inherited request");
+        }
+
+        [HttpGet("complex-query-inheritance")]
+        public IActionResult ComplexQueryWithInheritance([FromQuery] ExtendedTestRequest request)
+        {
+            return Ok("Complex query with inheritance");
+        }
     }
 
     #endregion
@@ -585,6 +694,29 @@ namespace MCPInvoke.Tests.AspNetCore
     {
         public string BatchName { get; set; } = string.Empty;
         public List<TestUpdateRequest> Items { get; set; } = new();
+    }
+
+    // Test models for inheritance chain testing (mirrors LlmProviderModelRequest hierarchy)
+    public class BaseTestRequest
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string Provider { get; set; } = string.Empty;
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        public string ModelName { get; set; } = string.Empty;
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        public string PromptVersion { get; set; } = string.Empty;
+    }
+
+    public class ExtendedTestRequest : BaseTestRequest
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        public string PromptType { get; set; } = string.Empty;
+        
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.Range(1, int.MaxValue)]
+        public int TenantId { get; set; }
     }
 
     #endregion

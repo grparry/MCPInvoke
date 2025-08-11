@@ -1,5 +1,49 @@
 # MCPInvoke Changelog
 
+## [1.5.0] - 2025-01-11
+
+### 🚀 Major Integration Update - MCPBuckle 1.7.0
+
+- **Updated to MCPBuckle 1.7.0** - Integrates critical fixes for complex parameter handling
+  - Package dependency updated from MCPBuckle 1.6.1 to 1.7.0
+  - Inherits all MCPBuckle 1.7.0 improvements for superior MCP tool generation
+  - Full compatibility maintained with all existing MCPInvoke functionality
+
+### 🔧 Enhanced MCP Tool Discovery
+
+- **[FromQuery] Complex Object Support** - Now correctly handles complex objects with `[FromQuery]` attribute
+  - Complex query parameters are properly classified as "query" source instead of "body"
+  - Critical for LLM prompt management APIs with inheritance-based parameter structures
+  - Fixes tool discovery for complex query parameter types like `PromptRequest` and `TenantPromptSettingsRequest`
+
+- **Inheritance Chain Property Walking** - Complete base class property inclusion in MCP tool definitions
+  - All base class properties are now properly included in tool schema generation
+  - Required attribute detection works across inheritance hierarchies  
+  - Essential for APIs using inheritance-based parameter models (e.g., `LlmProviderModelRequest` hierarchy)
+  - Properties like `Provider`, `ModelName`, `PromptVersion` now appear correctly in MCP tool schemas
+
+### 🎯 Real-World API Support
+
+- **LLM Prompt Management APIs** - Enhanced support for complex prompt management scenarios
+  - Inheritance-based request models fully supported
+  - Complex query parameters with inheritance properly expanded
+  - Required validation attributes propagated across inheritance chains
+
+### ✅ Comprehensive Testing
+
+- **3 New Integration Tests** - Comprehensive validation of MCPBuckle 1.7.0 integration
+  - `GetToolDefinitions_FromQueryComplexObject_DetectsQuerySource` - Validates [FromQuery] complex object fix
+  - `GetToolDefinitions_InheritedProperties_IncludesBaseClassProperties` - Validates inheritance chain walking
+  - `GetToolDefinitions_FromQueryWithInheritance_BothFixesWorkTogether` - Validates combined functionality
+- **106 Total Tests Pass** - All existing and new tests pass, ensuring complete backward compatibility
+- **Real-World Test Models** - Test cases mirror actual usage patterns with `BaseTestRequest` and `ExtendedTestRequest`
+
+### 🔄 Backward Compatibility
+
+- **100% Backward Compatible** - All existing MCPInvoke functionality preserved
+- **Enhanced Schema Generation** - Existing tool definitions improved with better parameter detection
+- **Seamless Upgrade** - Drop-in replacement for previous MCPInvoke versions
+
 ## [1.4.3] - 2025-08-07
 
 ### Enhancements

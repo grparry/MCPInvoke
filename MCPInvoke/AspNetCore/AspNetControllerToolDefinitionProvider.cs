@@ -444,8 +444,9 @@ namespace MCPInvoke.AspNetCore
             
             try
             {
-                var classProperties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => p.CanRead);
+                // Walk the full inheritance chain to include base class properties
+                // This fixes the issue where inherited properties (like Provider, ModelName, PromptVersion) were missing
+                var classProperties = GetInheritanceChainProperties(type);
                 
                 foreach (var prop in classProperties)
                 {
@@ -505,8 +506,8 @@ namespace MCPInvoke.AspNetCore
         {
             var required = new List<string>();
             
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead);
+            // Walk the inheritance chain to include base class properties for Required attribute detection
+            var properties = GetInheritanceChainProperties(type);
             
             foreach (var prop in properties)
             {
@@ -673,6 +674,31 @@ namespace MCPInvoke.AspNetCore
             // Placeholder for more advanced parameter description extraction
             // Could be enhanced to read XML comments or custom attributes
             return $"Parameter {param.Name} of type {param.ParameterType.Name}";
+        }
+        
+        /// <summary>
+        /// Gets properties from the entire inheritance chain of a type.
+        /// This ensures that base class properties are included in schema generation.
+        /// </summary>
+        private PropertyInfo[] GetInheritanceChainProperties(Type type)
+        {
+            var properties = new List<PropertyInfo>();
+            var currentType = type;
+
+            // Walk up inheritance chain - essential for PromptRequest : LlmProviderModelRequest
+            while (currentType != null && currentType != typeof(object))
+            {
+                var declaredProperties = currentType.GetProperties(
+                    BindingFlags.Public | 
+                    BindingFlags.Instance | 
+                    BindingFlags.DeclaredOnly)
+                    .Where(p => p.CanRead);
+                
+                properties.AddRange(declaredProperties);
+                currentType = currentType.BaseType;
+            }
+
+            return properties.ToArray();
         }
     }
 }
