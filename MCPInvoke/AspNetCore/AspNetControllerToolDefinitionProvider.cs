@@ -445,7 +445,7 @@ namespace MCPInvoke.AspNetCore
             try
             {
                 // Walk the full inheritance chain to include base class properties
-                // This fixes the issue where inherited properties (like Provider, ModelName, PromptVersion) were missing
+                // This fixes the issue where inherited properties from base classes were missing
                 var classProperties = GetInheritanceChainProperties(type);
                 
                 foreach (var prop in classProperties)
@@ -685,7 +685,7 @@ namespace MCPInvoke.AspNetCore
             var properties = new List<PropertyInfo>();
             var currentType = type;
 
-            // Walk up inheritance chain - essential for PromptRequest : LlmProviderModelRequest
+            // Walk up inheritance chain to include all base class properties
             while (currentType != null && currentType != typeof(object))
             {
                 var declaredProperties = currentType.GetProperties(

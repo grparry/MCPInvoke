@@ -14,13 +14,13 @@
 - **[FromQuery] Complex Object Support** - Now correctly handles complex objects with `[FromQuery]` attribute
   - Complex query parameters are properly classified as "query" source instead of "body"
   - Critical for LLM prompt management APIs with inheritance-based parameter structures
-  - Fixes tool discovery for complex query parameter types like `PromptRequest` and `TenantPromptSettingsRequest`
+  - Fixes tool discovery for complex query parameter types with inheritance hierarchies
 
 - **Inheritance Chain Property Walking** - Complete base class property inclusion in MCP tool definitions
   - All base class properties are now properly included in tool schema generation
   - Required attribute detection works across inheritance hierarchies  
-  - Essential for APIs using inheritance-based parameter models (e.g., `LlmProviderModelRequest` hierarchy)
-  - Properties like `Provider`, `ModelName`, `PromptVersion` now appear correctly in MCP tool schemas
+  - Essential for APIs using inheritance-based parameter models
+  - Base class properties now appear correctly in MCP tool schemas
 
 ### 🎯 Real-World API Support
 
