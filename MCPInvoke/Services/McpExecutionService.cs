@@ -14,6 +14,7 @@ namespace MCPInvoke.Services;
 
 /// <summary>
 /// Service responsible for handling the execution of MCP tool requests.
+/// Enhanced for MCPInvoke v2.0 with schema-aware parameter binding support.
 /// </summary>
 public class McpExecutionService
 {
@@ -21,7 +22,8 @@ public class McpExecutionService
     private readonly IMcpToolDefinitionProvider _toolDefinitionProvider; 
     private readonly ConcurrentDictionary<string, RegisteredTool> _toolRegistry = new();
     private readonly JsonSerializerOptions _jsonSerializerOptions;
-    private readonly ILogger<McpExecutionService> _logger; 
+    private readonly ILogger<McpExecutionService> _logger;
+    private readonly EnhancedParameterBindingService? _enhancedBindingService; 
 
     /// <summary>
     /// Initializes a new instance of the <see cref="McpExecutionService"/> class.
@@ -29,14 +31,17 @@ public class McpExecutionService
     /// <param name="serviceScopeFactory">The factory used to create scopes for resolving services.</param>
     /// <param name="toolDefinitionProvider">The provider that supplies tool definitions to be registered.</param>
     /// <param name="logger">The logger for logging messages.</param>
+    /// <param name="enhancedBindingService">Optional enhanced parameter binding service for v2.0 features.</param>
     public McpExecutionService(
         IServiceScopeFactory serviceScopeFactory,
         IMcpToolDefinitionProvider toolDefinitionProvider,
-        ILogger<McpExecutionService> logger)
+        ILogger<McpExecutionService> logger,
+        EnhancedParameterBindingService? enhancedBindingService = null)
     {
         _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
         _toolDefinitionProvider = toolDefinitionProvider ?? throw new ArgumentNullException(nameof(toolDefinitionProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _enhancedBindingService = enhancedBindingService;
         
         // Configure JSON serialization options to properly handle string enums
         _jsonSerializerOptions = new JsonSerializerOptions
@@ -48,7 +53,8 @@ public class McpExecutionService
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
         };
         
-        _logger.LogInformation("McpExecutionService initialized with JsonStringEnumConverter");
+        string bindingVersion = _enhancedBindingService != null ? "v2.0 enhanced" : "v1.x legacy";
+        _logger.LogInformation("McpExecutionService initialized with {BindingVersion} parameter binding", bindingVersion);
         
         // Populate tool registry from provider
         PopulateToolRegistryFromProvider(toolDefinitionProvider);
@@ -287,8 +293,43 @@ public class McpExecutionService
             _logger.LogInformation("  Registered schema keys for {MethodName} at call time: {Keys}", 
                                  toolName, string.Join(", ", registeredTool.InputParameters.Keys));
 
-            // Enhanced parameter binding with source detection support
-            object?[]? callParameters = await BindParametersWithSourceDetection(methodParameters, registeredTool, paramsElement, hasParamsElement, toolName, responseId);
+            // Enhanced parameter binding with v2.0 support
+            object?[]? callParameters = null;
+            
+            // Try v2.0 enhanced binding first if available
+            if (_enhancedBindingService != null && TryGetEnhancedSchema(registeredTool, out var enhancedSchema))
+            {
+                _logger.LogInformation("Using MCPInvoke v2.0 enhanced parameter binding for tool '{ToolName}'", toolName);
+                
+                try
+                {
+                    callParameters = await _enhancedBindingService.BindParametersAsync(
+                        methodParameters, 
+                        enhancedSchema, 
+                        paramsElement, 
+                        hasParamsElement, 
+                        toolName);
+                }
+                catch (MCPInvoke.Services.ParameterBindingException ex)
+                {
+                    _logger.LogError(ex, "Enhanced parameter binding failed for tool '{ToolName}'", toolName);
+                    var error = new JsonRpcError { Code = -32602, Message = $"Invalid params: {ex.Message}" };
+                    return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Unexpected error in enhanced parameter binding for tool '{ToolName}'", toolName);
+                    var error = new JsonRpcError { Code = -32603, Message = $"Internal error: Enhanced binding failed - {ex.Message}" };
+                    return JsonSerializer.Serialize(new JsonRpcResponse(responseId, error: error), _jsonSerializerOptions);
+                }
+            }
+            
+            // Fallback to legacy v1.x parameter binding
+            if (callParameters == null)
+            {
+                _logger.LogInformation("Using MCPInvoke v1.x legacy parameter binding for tool '{ToolName}'", toolName);
+                callParameters = await BindParametersWithSourceDetection(methodParameters, registeredTool, paramsElement, hasParamsElement, toolName, responseId);
+            }
             
             if (callParameters == null)
             {
@@ -1090,5 +1131,50 @@ public class McpExecutionService
         
         // Everything else is considered complex
         return underlyingType.IsClass || underlyingType.IsInterface || underlyingType.IsValueType;
+    }
+    
+    /// <summary>
+    /// Attempts to extract enhanced schema information from a registered tool for v2.0 binding.
+    /// </summary>
+    /// <param name="registeredTool">The registered tool to extract schema from.</param>
+    /// <param name="enhancedSchema">The extracted enhanced schema if successful.</param>
+    /// <returns>True if enhanced schema was successfully extracted, false otherwise.</returns>
+    private bool TryGetEnhancedSchema(RegisteredTool registeredTool, out List<McpParameterInfo> enhancedSchema)
+    {
+        enhancedSchema = new List<McpParameterInfo>();
+        
+        try
+        {
+            // Check if the tool definition provider supports enhanced schema (v2.0)
+            var toolDefinitions = _toolDefinitionProvider.GetToolDefinitions();
+            var matchingTool = toolDefinitions.FirstOrDefault(t => t.Name == registeredTool.ToolName);
+            
+            if (matchingTool?.InputSchema != null)
+            {
+                // Check if any parameter has v2.0 annotations
+                bool hasEnhancedMetadata = matchingTool.InputSchema.Any(p => 
+                    p.Annotations?.ContainsKey("sourceDetectionMethod") == true ||
+                    p.Annotations?.ContainsKey("httpMethod") == true ||
+                    !string.IsNullOrEmpty(p.Source));
+                
+                if (hasEnhancedMetadata)
+                {
+                    enhancedSchema = matchingTool.InputSchema.ToList();
+                    _logger.LogDebug("Extracted enhanced schema for tool '{ToolName}' with {ParameterCount} parameters having v2.0 metadata", 
+                                   registeredTool.ToolName, enhancedSchema.Count);
+                    return true;
+                }
+            }
+            
+            _logger.LogDebug("Tool '{ToolName}' does not have enhanced v2.0 schema metadata, falling back to legacy binding", 
+                           registeredTool.ToolName);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to extract enhanced schema for tool '{ToolName}', falling back to legacy binding", 
+                             registeredTool.ToolName);
+            return false;
+        }
     }
 }

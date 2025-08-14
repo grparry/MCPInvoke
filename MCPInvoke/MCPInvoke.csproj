@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>1.5.0</Version> <!-- Updated to MCPBuckle 1.7.0 with critical [FromQuery] and inheritance fixes -->
-    <Authors>MCPInvoke Contributors</Authors> <!-- Or your name/org -->
-    <Company>MCPInvoke</Company> <!-- Or your name/org -->
-    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications. Originally designed as a companion to MCPBuckle for tool execution, MCPInvoke now provides full MCP protocol support including tool discovery and execution. Version 1.5.0 updates to MCPBuckle 1.7.0 with critical fixes for [FromQuery] complex object detection and inheritance chain property walking, essential for LLM prompt management APIs with inheritance-based parameter structures.</Description>
+    <Version>2.0.0</Version>
+    <Authors>MCPInvoke Contributors</Authors>
+    <Company>MCPInvoke</Company>
+    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications with enhanced runtime parameter binding capabilities. Version 2.0.0 introduces schema-aware parameter binding that mirrors ASP.NET Core's parameter binding logic exactly, supporting route parameters, complex objects, validation, and intelligent error handling. Features runtime parameter source detection, comprehensive model validation, and seamless integration with MCPBuckle 2.0.0 for accurate tool discovery and execution.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
     <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>
@@ -22,8 +22,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Updated to MCPBuckle 1.7.0 with critical [FromQuery] and inheritance fixes -->
-    <PackageReference Include="MCPBuckle" Version="1.7.0" />
+    <!-- MCPBuckle as project reference for v2.0 development and testing -->
+    <ProjectReference Include="../../MCPBuckle/MCPBuckle/MCPBuckle.csproj" />
   </ItemGroup>
 
   <!-- If README.md is in the project root, not a subfolder -->

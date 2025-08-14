@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MCPInvoke\MCPInvoke.csproj" />
+    <ProjectReference Include="..\..\MCPBuckle\MCPBuckle\MCPBuckle.csproj" />
   </ItemGroup>
 
 </Project>
