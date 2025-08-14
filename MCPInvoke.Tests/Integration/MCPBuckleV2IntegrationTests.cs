@@ -89,9 +89,9 @@ namespace MCPInvoke.Tests.Integration
             
             // Verify MCPBuckle v2.0 enhanced detection
             Assert.Equal("route", tool.InputSchema.Properties["orgId"].Source);
-            Assert.Equal("route_template_analysis", tool.InputSchema.Properties["orgId"].Annotations["sourceDetectionMethod"]);
+            Assert.Equal("route_template_analysis", tool.InputSchema.Properties["orgId"].Annotations!["sourceDetectionMethod"]);
             Assert.Equal("query", tool.InputSchema.Properties["pageSize"].Source);
-            Assert.Equal("http_method_inference", tool.InputSchema.Properties["pageSize"].Annotations["sourceDetectionMethod"]);
+            Assert.Equal("http_method_inference", tool.InputSchema.Properties["pageSize"].Annotations!["sourceDetectionMethod"]);
 
             // Act 2: Convert to MCPInvoke schema format (simulating generic API bridge)
             var mcpInputSchema = ConvertToMCPInvokeSchema(tool.InputSchema);
@@ -132,9 +132,9 @@ namespace MCPInvoke.Tests.Integration
             
             // Verify explicit binding detection
             Assert.Equal("body", tool.InputSchema.Properties["model"].Source);
-            Assert.Equal("explicit", tool.InputSchema.Properties["model"].Annotations["sourceDetectionMethod"]);
+            Assert.Equal("explicit", tool.InputSchema.Properties["model"].Annotations!["sourceDetectionMethod"]);
             Assert.Equal("header", tool.InputSchema.Properties["apiVersion"].Source);
-            Assert.Equal("explicit", tool.InputSchema.Properties["apiVersion"].Annotations["sourceDetectionMethod"]);
+            Assert.Equal("explicit", tool.InputSchema.Properties["apiVersion"].Annotations!["sourceDetectionMethod"]);
 
             // Act 2: Convert and bind parameters
             var mcpInputSchema = ConvertToMCPInvokeSchema(tool.InputSchema);
@@ -175,7 +175,7 @@ namespace MCPInvoke.Tests.Integration
             
             // Verify enhanced validation metadata preservation
             Assert.Equal("body", tool.InputSchema.Properties["request"].Source);
-            Assert.True(tool.InputSchema.Properties["request"].Annotations.ContainsKey("validationRules"));
+            Assert.True(tool.InputSchema.Properties["request"].Annotations!.ContainsKey("validationRules"));
             Assert.Contains("Name", tool.InputSchema.Properties["request"].Required);
 
             // Act 2: Parameter binding with validation
@@ -377,7 +377,7 @@ namespace MCPInvoke.Tests.Integration
                     }
                     
                     // Check if JSON contains this parameter
-                    bool hasJsonValue = largeParamsJson.TryGetProperty(paramName, out var jsonValue);
+                    bool hasJsonValue = largeParamsJson.TryGetProperty(paramName!, out var jsonValue);
                     Console.WriteLine($"  JSON value present: {hasJsonValue}");
                     if (hasJsonValue)
                     {

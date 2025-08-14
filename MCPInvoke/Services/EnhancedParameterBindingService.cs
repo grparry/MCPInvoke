@@ -299,7 +299,7 @@ public class EnhancedParameterBindingService
     /// <summary>
     /// Binds enum parameters with multiple fallback strategies and enhanced metadata support.
     /// </summary>
-    private async Task<object?> BindEnumParameterAsync(
+    private Task<object?> BindEnumParameterAsync(
         Type enumType, 
         JsonElement paramValueJson, 
         McpParameterInfo schemaInfo, 
@@ -320,7 +320,7 @@ public class EnhancedParameterBindingService
             if (Enum.TryParse(enumType, enumStringValue, true, out var enumResult))
             {
                 _logger.LogDebug("Successfully parsed enum string '{Value}' to {EnumType}", enumStringValue, enumType.Name);
-                return enumResult;
+                return Task.FromResult<object?>(enumResult);
             }
 
             // Try JsonStringEnumConverter approach
@@ -334,7 +334,7 @@ public class EnhancedParameterBindingService
                     };
                     
                     string jsonString = $"\"{enumStringValue}\"";
-                    return JsonSerializer.Deserialize(jsonString, enumType, enumOptions);
+                    return Task.FromResult(JsonSerializer.Deserialize(jsonString, enumType, enumOptions));
                 }
                 catch (Exception ex)
                 {
@@ -349,13 +349,13 @@ public class EnhancedParameterBindingService
             int enumIntValue = paramValueJson.GetInt32();
             var result = Enum.ToObject(enumType, enumIntValue);
             _logger.LogDebug("Successfully converted numeric value {Value} to enum {EnumType}", enumIntValue, enumType.Name);
-            return result;
+            return Task.FromResult<object?>(result);
         }
 
         // Strategy 3: Fallback deserialization
         try
         {
-            return JsonSerializer.Deserialize(paramValueJson.GetRawText(), enumType, _jsonSerializerOptions);
+            return Task.FromResult(JsonSerializer.Deserialize(paramValueJson.GetRawText(), enumType, _jsonSerializerOptions));
         }
         catch (Exception ex)
         {
@@ -368,7 +368,7 @@ public class EnhancedParameterBindingService
     /// <summary>
     /// Binds complex object parameters with enhanced deserialization and validation.
     /// </summary>
-    private async Task<object?> BindComplexObjectParameterAsync(
+    private Task<object?> BindComplexObjectParameterAsync(
         Type objectType,
         JsonElement paramValueJson,
         McpParameterInfo schemaInfo,
@@ -386,10 +386,10 @@ public class EnhancedParameterBindingService
             // Additional validation for complex objects if schema provides property constraints
             if (schemaInfo.Properties != null && result != null)
             {
-                await ValidateComplexObjectProperties(result, schemaInfo.Properties, paramName);
+                ValidateComplexObjectProperties(result, schemaInfo.Properties, paramName);
             }
             
-            return result;
+            return Task.FromResult(result);
         }
         catch (JsonException ex)
         {
@@ -401,7 +401,7 @@ public class EnhancedParameterBindingService
     /// <summary>
     /// Binds array and collection parameters with proper item type handling.
     /// </summary>
-    private async Task<object?> BindCollectionParameterAsync(
+    private Task<object?> BindCollectionParameterAsync(
         Type collectionType,
         JsonElement paramValueJson,
         McpParameterInfo schemaInfo,
@@ -416,7 +416,7 @@ public class EnhancedParameterBindingService
 
         try
         {
-            return JsonSerializer.Deserialize(paramValueJson.GetRawText(), collectionType, _jsonSerializerOptions);
+            return Task.FromResult(JsonSerializer.Deserialize(paramValueJson.GetRawText(), collectionType, _jsonSerializerOptions));
         }
         catch (JsonException ex)
         {
@@ -428,13 +428,13 @@ public class EnhancedParameterBindingService
     /// <summary>
     /// Binds primitive parameters with proper type coercion.
     /// </summary>
-    private async Task<object?> BindPrimitiveParameterAsync(Type primitiveType, JsonElement paramValueJson, string paramName)
+    private Task<object?> BindPrimitiveParameterAsync(Type primitiveType, JsonElement paramValueJson, string paramName)
     {
         _logger.LogDebug("Binding primitive parameter '{ParamName}' of type '{Type}'", paramName, primitiveType.Name);
 
         try
         {
-            return JsonSerializer.Deserialize(paramValueJson.GetRawText(), primitiveType, _jsonSerializerOptions);
+            return Task.FromResult(JsonSerializer.Deserialize(paramValueJson.GetRawText(), primitiveType, _jsonSerializerOptions));
         }
         catch (JsonException ex)
         {
@@ -538,37 +538,37 @@ public class EnhancedParameterBindingService
     /// <summary>
     /// Validates enum values against allowed values.
     /// </summary>
-    private async Task ValidateEnumValue(JsonElement paramValue, List<object> allowedValues, string paramName)
+    private Task ValidateEnumValue(JsonElement paramValue, List<object> allowedValues, string paramName)
     {
         // Implementation for enum validation
-        await Task.CompletedTask; // Placeholder for async pattern
+        return Task.CompletedTask; // Placeholder for async pattern
     }
 
     /// <summary>
     /// Validates format constraints (email, date-time, etc.).
     /// </summary>
-    private async Task ValidateFormat(JsonElement paramValue, string format, string paramName)
+    private Task ValidateFormat(JsonElement paramValue, string format, string paramName)
     {
         // Implementation for format validation
-        await Task.CompletedTask; // Placeholder for async pattern
+        return Task.CompletedTask; // Placeholder for async pattern
     }
 
     /// <summary>
     /// Validates annotation-based rules.
     /// </summary>
-    private async Task ValidateAnnotationRules(JsonElement paramValue, Dictionary<string, object>? annotations, string paramName)
+    private Task ValidateAnnotationRules(JsonElement paramValue, Dictionary<string, object>? annotations, string paramName)
     {
         // Implementation for annotation rule validation
-        await Task.CompletedTask; // Placeholder for async pattern
+        return Task.CompletedTask; // Placeholder for async pattern
     }
 
     /// <summary>
     /// Validates complex object properties against schema constraints.
     /// </summary>
-    private async Task ValidateComplexObjectProperties(object obj, Dictionary<string, McpParameterInfo> propertySchema, string paramName)
+    private Task ValidateComplexObjectProperties(object obj, Dictionary<string, McpParameterInfo> propertySchema, string paramName)
     {
         // Implementation for complex object property validation
-        await Task.CompletedTask; // Placeholder for async pattern
+        return Task.CompletedTask; // Placeholder for async pattern
     }
 
     /// <summary>

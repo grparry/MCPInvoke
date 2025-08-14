@@ -42,7 +42,7 @@ namespace MCPInvoke.Tests.Patterns
                 string actionName,
                 Type controllerType,
                 string resourcePath,
-                List<ParameterDescriptor> additionalParameters = null)
+                List<ParameterDescriptor>? additionalParameters = null)
             {
                 var baseParameters = new List<ParameterDescriptor>
                 {
@@ -59,7 +59,7 @@ namespace MCPInvoke.Tests.Patterns
                     ControllerName = controllerName,
                     ActionName = actionName,
                     ControllerTypeInfo = controllerType.GetTypeInfo(),
-                    MethodInfo = methodInfo,
+                    MethodInfo = methodInfo!,
                     AttributeRouteInfo = new Microsoft.AspNetCore.Mvc.Routing.AttributeRouteInfo
                     {
                         Template = $"api/organizations/{{orgId}}/users/{{userId}}/{resourcePath}"
@@ -74,7 +74,7 @@ namespace MCPInvoke.Tests.Patterns
                 List<McpParameterInfo> schema,
                 int orgId = 123,
                 int userId = 456,
-                Dictionary<string, object> additionalParams = null)
+                Dictionary<string, object>? additionalParams = null)
             {
                 var jsonParams = new Dictionary<string, object>
                 {
@@ -91,8 +91,9 @@ namespace MCPInvoke.Tests.Patterns
                 var jsonString = JsonSerializer.Serialize(jsonParams);
                 var paramsJson = JsonDocument.Parse(jsonString).RootElement;
 
-                return await bindingService.BindParametersAsync(
+                var result = await bindingService.BindParametersAsync(
                     methodInfo.GetParameters(), schema, paramsJson, true, methodInfo.Name);
+                return result!;
             }
 
             public static void AssertRouteParametersCorrect(object[] boundParameters, int expectedOrgId = 123, int expectedUserId = 456)
@@ -115,7 +116,7 @@ namespace MCPInvoke.Tests.Patterns
                 string actionName,
                 Type controllerType,
                 string resourcePath,
-                List<ParameterDescriptor> additionalParameters = null)
+                List<ParameterDescriptor>? additionalParameters = null)
             {
                 var baseParameters = new List<ParameterDescriptor>
                 {
@@ -131,7 +132,7 @@ namespace MCPInvoke.Tests.Patterns
                     ControllerName = controllerName,
                     ActionName = actionName,
                     ControllerTypeInfo = controllerType.GetTypeInfo(),
-                    MethodInfo = methodInfo,
+                    MethodInfo = methodInfo!,
                     AttributeRouteInfo = new Microsoft.AspNetCore.Mvc.Routing.AttributeRouteInfo
                     {
                         Template = $"api/organizations/{{orgId}}/{resourcePath}"
@@ -153,8 +154,8 @@ namespace MCPInvoke.Tests.Patterns
                 Type controllerType,
                 string resourceName,
                 string idParameterName = "id",
-                Type idParameterType = null,
-                List<ParameterDescriptor> additionalParameters = null)
+                Type? idParameterType = null,
+                List<ParameterDescriptor>? additionalParameters = null)
             {
                 idParameterType ??= typeof(int);
 
@@ -172,7 +173,7 @@ namespace MCPInvoke.Tests.Patterns
                     ControllerName = controllerName,
                     ActionName = actionName,
                     ControllerTypeInfo = controllerType.GetTypeInfo(),
-                    MethodInfo = methodInfo,
+                    MethodInfo = methodInfo!,
                     AttributeRouteInfo = new Microsoft.AspNetCore.Mvc.Routing.AttributeRouteInfo
                     {
                         Template = $"api/{resourceName}/{{{idParameterName}}}"
@@ -196,7 +197,7 @@ namespace MCPInvoke.Tests.Patterns
                 string requestParameterName,
                 Type requestType,
                 Dictionary<string, McpParameterInfo> requestProperties,
-                List<string> requiredProperties = null)
+                List<string>? requiredProperties = null)
             {
                 return new List<McpParameterInfo>
                 {
@@ -330,7 +331,7 @@ namespace MCPInvoke.Tests.Patterns
                 string parameterName,
                 string source = "query",
                 bool isRequired = false,
-                object defaultValue = null) where T : Enum
+                object? defaultValue = null) where T : Enum
             {
                 return new McpParameterInfo
                 {
@@ -498,7 +499,7 @@ namespace MCPInvoke.Tests.Patterns
                 MethodInfo methodInfo,
                 List<McpParameterInfo> schema,
                 string missingParameterName,
-                Dictionary<string, object> providedParams = null)
+                Dictionary<string, object>? providedParams = null)
             {
                 providedParams ??= new Dictionary<string, object>();
                 
@@ -535,9 +536,9 @@ namespace MCPInvoke.Tests.Patterns
                 for (int i = 0; i < parameters.Length; i++)
                 {
                     var param = parameters[i];
-                    if (expectedDefaults.ContainsKey(param.Name))
+                    if (expectedDefaults.ContainsKey(param.Name!))
                     {
-                        Assert.Equal(expectedDefaults[param.Name], boundParameters[i]);
+                        Assert.Equal(expectedDefaults[param.Name!], boundParameters[i]);
                     }
                 }
             }
@@ -601,7 +602,7 @@ namespace MCPInvoke.Tests.Patterns
                 string name,
                 string source = "query",
                 bool isRequired = false,
-                string defaultValue = null)
+                string? defaultValue = null)
             {
                 return new McpParameterInfo
                 {

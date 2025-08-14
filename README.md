@@ -13,15 +13,35 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
-## What's New in 1.5.0
+## What's New in 2.0.0
 
-### 🚀 Major Integration Update - MCPBuckle 1.7.0
+### 🚀 Major Enhancement - Enhanced Parameter Binding and OSS Preparation
 
-- **Updated to MCPBuckle 1.7.0** - Integrates critical fixes for complex parameter handling with full backward compatibility
-- **[FromQuery] Complex Object Support** - Now correctly handles complex objects with `[FromQuery]` attribute, properly classifying them as "query" source instead of "body"
-- **Inheritance Chain Property Walking** - Complete base class property inclusion in MCP tool definitions - all base class properties now appear correctly
-- **LLM Prompt Management APIs** - Enhanced support for complex prompt management scenarios with inheritance-based request models
-- **106 Total Tests Pass** - All existing and new tests pass, including 3 new integration tests validating the MCPBuckle 1.7.0 fixes
+- **Enhanced Parameter Binding Service** - Complete rewrite with schema-aware parameter binding that mirrors ASP.NET Core logic exactly
+  - Runtime parameter source detection with comprehensive validation
+  - Advanced route parameter analysis and intelligent error handling  
+  - Schema-aware parameter binding with multi-framework support (net6.0-net9.0)
+  - Complete integration with MCPBuckle 2.0.0's enhanced parameter source detection
+
+- **MCPBuckle 2.0.0 Integration** - Full compatibility with enhanced parameter binding capabilities
+  - Seamless integration with MCPBuckle 2.0.0's advanced parameter source detection
+  - Coordinated v2.0.0 release for complete MCP tool discovery and execution
+  - Enhanced schema generation with comprehensive route template analysis
+  - Advanced parameter validation and intelligent error handling
+
+### 🧹 OSS Preparation and Generic Test Patterns
+
+- **Removed Proprietary Test Patterns** - Eliminated AnalyticsAPI-specific test content (1,106 lines)
+  - Comprehensive cleanup of proprietary financial domain test patterns
+  - Created generic web API patterns for e-commerce/business domains  
+  - Enhanced documentation with pattern conversion guides
+  - Clean separation of proprietary vs. OSS-ready content
+
+- **137/137 Tests Passing** - Complete test coverage maintained across all frameworks
+  - Enhanced parameter binding validation tests
+  - MCPBuckle v2.0 integration tests  
+  - Generic web API pattern demonstration tests
+  - Multi-framework compatibility validation
 
 ### 🔧 Enhanced Schema Generation
 
@@ -29,7 +49,7 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Complete Parameter Schemas** - Both fixes work together to provide comprehensive parameter expansion for inheritance-aware processing
 - **Seamless Upgrade** - Drop-in replacement for previous MCPInvoke versions with 100% backward compatibility
 
-## What's New in 1.4.3
+## What's New in 1.5.0 (Superseded by 2.0.0)
 
 - **MCPBuckle 1.6.1 Integration** - Updated to use MCPBuckle 1.6.1 with circular reference protection and enhanced stability
 - **Circular Reference Protection** - Prevents stack overflow errors when processing complex object schemas with self-referencing or mutually-referencing types
@@ -140,7 +160,7 @@ For more detailed information on ASP.NET Core integration, see the [AspNetCore R
 
 ## Claude Code CLI Integration
 
-MCPInvoke 1.3.0+ is fully compatible with Anthropic's Claude Code CLI. To integrate your API with Claude:
+MCPInvoke 2.0.0+ is fully compatible with Anthropic's Claude Code CLI. To integrate your API with Claude:
 
 1. **Configure your API with MCPInvoke**:
    ```csharp

@@ -22,14 +22,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- MCPBuckle as project reference for v2.0 development and testing -->
-    <ProjectReference Include="../../MCPBuckle/MCPBuckle/MCPBuckle.csproj" />
+    <PackageReference Include="MCPBuckle" Version="2.0.0" />
   </ItemGroup>
 
   <!-- If README.md is in the project root, not a subfolder -->
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
-  <!-- MCPBuckle ProjectReference removed for NuGet packaging -->
 
 </Project>

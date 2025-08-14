@@ -1,5 +1,49 @@
 # MCPInvoke Changelog
 
+## [2.0.0] - 2025-01-14
+
+### 🚀 Major Enhancement - Enhanced Parameter Binding and OSS Preparation
+
+- **Enhanced Parameter Binding Service** - Complete rewrite with schema-aware parameter binding that mirrors ASP.NET Core logic exactly
+  - Runtime parameter source detection with comprehensive validation
+  - Advanced route parameter analysis and intelligent error handling  
+  - Schema-aware parameter binding with multi-framework support (net6.0-net9.0)
+  - Complete integration with MCPBuckle 2.0.0's enhanced parameter source detection
+
+- **MCPBuckle 2.0.0 Integration** - Full compatibility with enhanced parameter binding capabilities
+  - Seamless integration with MCPBuckle 2.0.0's advanced parameter source detection
+  - Coordinated v2.0.0 release for complete MCP tool discovery and execution
+  - Enhanced schema generation with comprehensive route template analysis
+  - Advanced parameter validation and intelligent error handling
+
+### 🧹 OSS Preparation and Generic Test Patterns
+
+- **Removed Proprietary Test Patterns** - Eliminated AnalyticsAPI-specific test content (1,106 lines)
+  - Comprehensive cleanup of proprietary financial domain test patterns
+  - Created generic web API patterns for e-commerce/business domains  
+  - Enhanced documentation with pattern conversion guides
+  - Clean separation of proprietary vs. OSS-ready content
+
+- **137/137 Tests Passing** - Complete test coverage maintained across all frameworks
+  - Enhanced parameter binding validation tests
+  - MCPBuckle v2.0 integration tests  
+  - Generic web API pattern demonstration tests
+  - Multi-framework compatibility validation
+
+### 🔧 Architecture Improvements
+
+- **Multi-Framework Support** - Complete targeting for net6.0, net7.0, net8.0, net9.0
+- **Enhanced Documentation** - Updated all version references and compatibility statements  
+- **Generic Test Framework** - OSS-ready test patterns for any web API domain
+- **Clean Project References** - Proper NuGet package references for OSS publication
+
+### Breaking Changes
+
+- **Major Version Increment** - Enhanced parameter binding capabilities require v2.0.0
+- **MCPBuckle Dependency** - Now requires MCPBuckle 2.0.0+ for full compatibility  
+- **Generic Test Patterns** - Proprietary domain-specific test patterns replaced with generic patterns
+- **Package Reference** - MCPBuckle now referenced as NuGet package instead of project reference
+
 ## [1.5.0] - 2025-01-11
 
 ### 🚀 Major Integration Update - MCPBuckle 1.7.0
