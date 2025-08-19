@@ -5,10 +5,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
     <Authors>MCPInvoke Contributors</Authors>
     <Company>MCPInvoke</Company>
-    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications with enhanced runtime parameter binding capabilities. Version 2.0.0 introduces schema-aware parameter binding that mirrors ASP.NET Core's parameter binding logic exactly, supporting route parameters, complex objects, validation, and intelligent error handling. Features runtime parameter source detection, comprehensive model validation, and seamless integration with MCPBuckle 2.0.0 for accurate tool discovery and execution.</Description>
+    <Description>MCPInvoke is a complete Model Context Protocol (MCP) server implementation for ASP.NET Core applications with enhanced runtime parameter binding capabilities. Version 2.1.0 inherits Claude Code CLI compatibility fixes from MCPBuckle 2.1.0, resolving optional route parameter parsing issues. Features schema-aware parameter binding that mirrors ASP.NET Core's parameter binding logic exactly, supporting route parameters, complex objects, validation, and intelligent error handling. Includes runtime parameter source detection, comprehensive model validation, and seamless integration with MCPBuckle 2.1.0+ for accurate tool discovery and execution.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/grparry/MCPInvoke</PackageProjectUrl>
     <RepositoryUrl>https://github.com/grparry/MCPInvoke.git</RepositoryUrl>
@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MCPBuckle" Version="2.0.0" />
+    <PackageReference Include="MCPBuckle" Version="2.1.0" />
   </ItemGroup>
 
   <!-- If README.md is in the project root, not a subfolder -->

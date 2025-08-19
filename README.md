@@ -13,6 +13,37 @@ This library enables ASP.NET Core applications with existing REST APIs and Swagg
 - **Developer-Friendly** - Minimal friction for projects already using Swagger/OpenAPI
 - **Secure** - Input validation, sanitized outputs, and support for human-in-the-loop confirmations
 
+## What's New in 2.1.0
+
+### 🔧 Enhanced Compatibility - MCPBuckle 2.1.0 Integration
+
+- **MCPBuckle 2.1.0 Compatibility** - Inherits Claude Code CLI compatibility fixes from MCPBuckle 2.1.0
+  - Resolves optional route parameter parsing issues that affected Claude Code CLI integration
+  - MCPBuckle dependency updated to support version 2.1.0+ with enhanced parameter name validation
+  - All MCP tools generated through MCPInvoke now have property names compatible with Claude Code CLI requirements
+
+- **Enhanced Parameter Binding** - Continued compatibility with advanced parameter binding capabilities
+  - Runtime parameter source detection remains fully functional with updated MCPBuckle dependency
+  - Schema-aware parameter binding continues to mirror ASP.NET Core logic exactly
+  - No breaking changes to existing MCPInvoke functionality
+
+### 🚀 Improved Release Process
+
+- **Professional Release Management** - Updated GitHub workflow to use release-only triggers
+  - Publish workflow now requires proper GitHub releases instead of simple tag pushes
+  - Encourages comprehensive release documentation and manual review gates
+  - Consistent with MCPBuckle's improved release process
+
+### ✅ Quality Assurance
+
+- **All 137 Tests Passing** - Full test coverage maintained with MCPBuckle 2.1.0 integration
+- **Multi-Framework Support** - Verified compatibility across .NET 6.0, 7.0, 8.0, and 9.0
+- **Backward Compatibility** - All existing MCPInvoke functionality preserved and enhanced
+
+### Impact
+
+This minor release ensures that applications using MCPInvoke for MCP tool execution are fully compatible with Claude Code CLI. The dependency update to MCPBuckle 2.1.0 resolves parameter naming validation issues that could prevent Claude Code CLI from properly importing and executing MCP tools.
+
 ## What's New in 2.0.0
 
 ### 🚀 Major Enhancement - Enhanced Parameter Binding and OSS Preparation

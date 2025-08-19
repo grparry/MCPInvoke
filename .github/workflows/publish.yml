@@ -1,9 +1,8 @@
 name: Publish MCPInvoke to NuGet
 
 on:
-  push:
-    tags:
-      - 'v*.*.*' # Triggers on tags like v0.1.0, v1.2.3
+  release:
+    types: [published] # Only trigger on GitHub release publication, not tags
 
 jobs:
   publish: # Renamed job for clarity
